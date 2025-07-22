@@ -111,6 +111,37 @@ app.get('/api/files/:id', async (req, res) => {
   }
 });
 
+// Delete message endpoint
+app.delete('/api/messages/:id', async (req, res) => {
+  try {
+    const message = await Message.findById(req.params.id);
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    // If message has a file, delete it from GridFS
+    if (message.file && message.file.id) {
+      try {
+        const { bucket } = await getGridFS();
+        const fileId = new ObjectId(message.file.id);
+        await bucket.delete(fileId);
+      } catch (err) {
+        console.error('Error deleting file:', err);
+        // Continue with message deletion even if file deletion fails
+      }
+    }
+
+    // Delete the message from database
+    await Message.findByIdAndDelete(req.params.id);
+
+    // Emit socket event to notify all clients about message deletion
+    io.emit('messageDeleted', req.params.id);
+    res.status(200).json({ message: 'Message deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Error deleting message' });
+  }
+});
+
 app.post('/api/messages', upload.single('file'), async (req, res) => {
   const { username, text } = req.body;
   let file = null;
