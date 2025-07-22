@@ -1,6 +1,6 @@
 'use client';
 import { useRef, useState } from 'react';
-import { EmojiPicker } from './EmojiPicker';
+import { EmojiPickerComponent } from './EmojiPicker';
 
 interface ChatInputProps {
   username: string;
@@ -66,7 +66,7 @@ export function ChatInput({ username, text, onUsernameChange, onTextChange, onFi
           </button>
           {isEmojiPickerOpen && (
             <div className="absolute right-0 bottom-full mb-2 z-50 shadow-xl rounded-lg border border-gray-200">
-              <EmojiPicker
+              <EmojiPickerComponent
                 onSelect={(emoji) => {
                   onTextChange(text + emoji.native);
                   setIsEmojiPickerOpen(false);
