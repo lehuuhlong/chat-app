@@ -8,11 +8,12 @@ interface MessageListProps {
   username: string;
   onDelete: (messageId: string) => void;
   API_URL: string;
+  search?: string;
 }
 
 const MemoMessageItem = React.memo(MessageItem);
 
-export function MessageList({ messages, username, onDelete, API_URL }: MessageListProps) {
+export function MessageList({ messages, username, onDelete, API_URL, search }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -28,7 +29,14 @@ export function MessageList({ messages, username, onDelete, API_URL }: MessageLi
         <div className="text-center text-gray-600 mt-10 select-none">No messages yet. Start a conversation!</div>
       ) : (
         messages.map((message) => (
-          <MemoMessageItem key={message._id} message={message} isOwn={message.username === username} onDelete={onDelete} API_URL={API_URL} />
+          <MemoMessageItem
+            key={message._id}
+            message={message}
+            isOwn={message.username === username}
+            onDelete={onDelete}
+            API_URL={API_URL}
+            search={search}
+          />
         ))
       )}
       <div ref={messagesEndRef} />

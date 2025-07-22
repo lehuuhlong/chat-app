@@ -163,8 +163,45 @@ app.post('/api/messages', upload.single('file'), async (req, res) => {
   res.status(201).json(msgObj);
 });
 
+// API chỉnh sửa tin nhắn
+app.patch('/api/messages/:id', async (req, res) => {
+  try {
+    const { text } = req.body;
+    const message = await Message.findById(req.params.id);
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+    message.text = text;
+    await message.save();
+    io.emit('messageEdited', { _id: message._id, text });
+    res.status(200).json({ message: 'Message updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Error editing message' });
+  }
+});
+
+// Quản lý user online
+const onlineUsers = new Set();
+
 // Socket.IO
 io.on('connection', (socket) => {
+  let currentUser = null;
+
+  socket.on('userOnline', (username) => {
+    currentUser = username;
+    if (username) {
+      onlineUsers.add(username);
+      io.emit('onlineUsers', Array.from(onlineUsers));
+    }
+  });
+
+  socket.on('disconnect', () => {
+    if (currentUser) {
+      onlineUsers.delete(currentUser);
+      io.emit('onlineUsers', Array.from(onlineUsers));
+    }
+  });
+
   socket.on('message', async (data) => {
     const { username, text, file } = data;
     const message = new Message({ username, text, file });
@@ -182,6 +219,11 @@ io.on('connection', (socket) => {
     // Gửi đến tất cả client khác trừ người gửi
     socket.broadcast.emit('userStoppedTyping', username);
   });
+});
+
+// API trả về danh sách user online
+app.get('/api/online-users', (req, res) => {
+  res.json(Array.from(onlineUsers));
 });
 
 const PORT = process.env.PORT || 5000;

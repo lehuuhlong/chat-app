@@ -1,6 +1,6 @@
 'use client';
 import { Message } from '@/types';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import Image from 'next/image';
 import { ImageViewer } from './ImageViewer';
 
@@ -9,6 +9,7 @@ interface MessageItemProps {
   isOwn: boolean;
   onDelete: (messageId: string) => void;
   API_URL: string;
+  search?: string;
 }
 
 const handleFileDownload = async (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>, fileId: string, originalname: string, API_URL: string) => {
@@ -56,9 +57,41 @@ const formatMessageText = (text: string) => {
   });
 };
 
-export const MessageItem = React.memo(function MessageItem({ message, isOwn, onDelete, API_URL }: MessageItemProps) {
+function highlight(text: string, keyword: string) {
+  if (!keyword) return text;
+  const regex = new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  return text.split(regex).map((part, i) =>
+    regex.test(part) ? (
+      <mark key={i} className="bg-yellow-200 px-0.5 rounded">
+        {part}
+      </mark>
+    ) : (
+      part
+    )
+  );
+}
+
+export const MessageItem = React.memo(function MessageItem({ message, isOwn, onDelete, API_URL, search }: MessageItemProps) {
   const formattedText = useMemo(() => formatMessageText(message.text), [message.text]);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(message.text);
+  useEffect(() => {
+    setEditText(message.text);
+  }, [message.text]);
+
+  const handleEdit = async () => {
+    if (editText.trim() === message.text) {
+      setIsEditing(false);
+      return;
+    }
+    await fetch(`${API_URL}/api/messages/${message._id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: editText }),
+    });
+    setIsEditing(false);
+  };
 
   return (
     <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
@@ -68,22 +101,52 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
         }`}
       >
         {isOwn && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(message._id);
-            }}
-            aria-label="Delete message"
-            className="absolute -right-2 -top-2 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400"
-          >
-            ×
-          </button>
+          <>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(message._id);
+              }}
+              aria-label="Delete message"
+              className="absolute -right-2 -top-2 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400"
+            >
+              ×
+            </button>
+            <button
+              onClick={() => setIsEditing((v) => !v)}
+              aria-label="Edit message"
+              className="absolute -right-2 top-6 w-6 h-6 bg-yellow-400 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+            >
+              ✎
+            </button>
+          </>
         )}
         <div className="text-xs font-semibold mb-1 flex items-center gap-1">
-          <span>{message.username}</span>
+          <span>{search ? highlight(message.username, search) : message.username}</span>
           {isOwn && <span className="text-[10px] text-indigo-200">(You)</span>}
         </div>
-        <div className={isOwn ? 'text-white' : 'text-gray-900'}>{formattedText}</div>
+        {isEditing ? (
+          <div className="flex gap-2 items-center">
+            <input
+              className="rounded px-2 py-1 text-sm text-gray-900 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleEdit();
+                if (e.key === 'Escape') setIsEditing(false);
+              }}
+            />
+            <button onClick={handleEdit} className="text-green-600 hover:text-green-800 font-bold">
+              Lưu
+            </button>
+            <button onClick={() => setIsEditing(false)} className="text-gray-400 hover:text-red-500 font-bold">
+              Hủy
+            </button>
+          </div>
+        ) : (
+          <div className={isOwn ? 'text-white' : 'text-gray-900'}>{search ? highlight(message.text, search) : formattedText}</div>
+        )}
         {message.file && message.file.id ? (
           <div className="mt-1">
             <a
