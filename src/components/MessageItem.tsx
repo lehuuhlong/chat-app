@@ -39,6 +39,12 @@ const isImage = (filename: string) => {
   return extension ? imageExtensions.includes(extension) : false;
 };
 
+const isAudio = (filename: string) => {
+  const audioExtensions = ['webm', 'mp3', 'wav', 'ogg', 'm4a'];
+  const extension = filename.split('.').pop()?.toLowerCase();
+  return extension ? audioExtensions.includes(extension) : false;
+};
+
 const formatMessageText = (text: string) => {
   // Regular expression for matching URLs
   const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -73,12 +79,14 @@ function highlight(text: string, keyword: string) {
 
 export const MessageItem = React.memo(function MessageItem({ message, isOwn, onDelete, API_URL, search }: MessageItemProps) {
   const formattedText = useMemo(() => formatMessageText(message.text), [message.text]);
-  const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
   useEffect(() => {
     setEditText(message.text);
   }, [message.text]);
+
+  // Thay vì chỉ dùng isViewerOpen, dùng viewerState để lưu src ảnh đang xem
+  const [viewerState, setViewerState] = useState<{ open: boolean; src: string; alt: string } | null>(null);
 
   const handleEdit = async () => {
     if (editText.trim() === message.text) {
@@ -91,6 +99,74 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
       body: JSON.stringify({ text: editText }),
     });
     setIsEditing(false);
+  };
+
+  // Helper render file (ảnh/audio/khác)
+  const renderFile = (file: any) => {
+    if (!file) return null;
+    if (isAudio(file.originalname)) {
+      return (
+        <audio controls className="w-full mt-1">
+          <source src={`${API_URL}/api/files/${file.id}`} type={file.mimetype || 'audio/webm'} />
+          Trình duyệt của bạn không hỗ trợ phát audio.
+        </audio>
+      );
+    }
+    if (isImage(file.originalname)) {
+      return (
+        <div
+          className="mt-2 rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+          onClick={() => setViewerState({ open: true, src: `${API_URL}/api/files/${file.id}`, alt: file.originalname })}
+        >
+          <div className="relative w-[300px] h-[200px] group">
+            <Image
+              src={`${API_URL}/api/files/${file.id}`}
+              alt={file.originalname}
+              fill
+              sizes="300px"
+              className="object-contain"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+              }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    // File khác
+    return (
+      <a
+        href={`${API_URL}/api/files/${file.id}`}
+        download={file.originalname}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-xs text-blue-700 flex items-center gap-1 hover:text-blue-900 focus:outline-none cursor-pointer select-auto"
+        title="Download file"
+        onClick={(e) => handleFileDownload(e, file.id, file.originalname, API_URL)}
+      >
+        <span role="img" aria-label="file">
+          📎
+        </span>{' '}
+        {file.originalname}
+      </a>
+    );
   };
 
   return (
@@ -147,69 +223,18 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
         ) : (
           <div className={isOwn ? 'text-white' : 'text-gray-900'}>{search ? highlight(message.text, search) : formattedText}</div>
         )}
-        {message.file && message.file.id ? (
-          <div className="mt-1">
-            <a
-              href={`${API_URL}/api/files/${message.file.id}`}
-              download={message.file.originalname}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-blue-700 flex items-center gap-1 hover:text-blue-900 focus:outline-none cursor-pointer select-auto"
-              title="Download file"
-              onClick={(e) => handleFileDownload(e, message.file!.id, message.file!.originalname, API_URL)}
-            >
-              <span role="img" aria-label="file">
-                📎
-              </span>{' '}
-              {message.file.originalname}
-            </a>
-            {isImage(message.file.originalname) && (
-              <>
-                <div
-                  className="mt-2 rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
-                  onClick={() => setIsViewerOpen(true)}
-                >
-                  <div className="relative w-[300px] h-[200px] group">
-                    <Image
-                      src={`${API_URL}/api/files/${message.file.id}`}
-                      alt={message.file.originalname}
-                      fill
-                      sizes="300px"
-                      className="object-contain"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                      }}
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={1.5}
-                        stroke="currentColor"
-                        className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-                {isViewerOpen && (
-                  <ImageViewer
-                    src={`${API_URL}/api/files/${message.file.id}`}
-                    alt={message.file.originalname}
-                    onClose={() => setIsViewerOpen(false)}
-                  />
-                )}
-              </>
-            )}
+        {Array.isArray(message.files) && message.files.length > 0 ? (
+          <div className="flex flex-wrap gap-2 mt-1">
+            {message.files.map((file, idx) => (
+              <div key={file.id || idx} className="max-w-[320px]">
+                {renderFile(file)}
+              </div>
+            ))}
           </div>
+        ) : message.file && message.file.id ? (
+          <div className="mt-1">{renderFile(message.file)}</div>
         ) : null}
+        {viewerState?.open && <ImageViewer src={viewerState.src} alt={viewerState.alt} onClose={() => setViewerState(null)} />}
         <div className={`text-[10px] ${isOwn ? 'text-indigo-200' : 'text-gray-400'} mt-1 text-right`}>
           {new Date(message.createdAt).toLocaleString()}
         </div>

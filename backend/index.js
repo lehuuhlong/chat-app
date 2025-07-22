@@ -31,6 +31,16 @@ const messageSchema = new mongoose.Schema({
     mimetype: String,
     size: Number,
   },
+  files: [
+    {
+      // Add files field for multiple files
+      id: String,
+      filename: String,
+      originalname: String,
+      mimetype: String,
+      size: Number,
+    },
+  ],
   createdAt: { type: Date, default: Date.now },
 });
 const Message = mongoose.model('Message', messageSchema);
@@ -142,23 +152,27 @@ app.delete('/api/messages/:id', async (req, res) => {
   }
 });
 
-app.post('/api/messages', upload.single('file'), async (req, res) => {
+app.post('/api/messages', upload.array('files', 10), async (req, res) => {
   const { username, text } = req.body;
-  let file = null;
-  if (req.file) {
-    file = {
-      id: req.file.id?.toString?.() || req.file.id,
-      filename: req.file.filename,
-      originalname: req.file.originalname,
-      mimetype: req.file.mimetype,
-      size: req.file.size,
-    };
+  let files = null;
+  if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+    files = req.files.map((f) => ({
+      id: f.id?.toString?.() || f.id,
+      filename: f.filename,
+      originalname: f.originalname,
+      mimetype: f.mimetype,
+      size: f.size,
+    }));
   }
-  const message = new Message({ username, text, file });
+  // Đảm bảo tương thích với frontend: nếu chỉ có 1 file thì lưu dạng cũ (file), nếu nhiều file thì lưu files
+  let messageData = { username, text };
+  if (files && files.length === 1) messageData.file = files[0];
+  if (files && files.length > 1) messageData.files = files;
+  const message = new Message(messageData);
   await message.save();
-  // Đảm bảo trả về file.id là string cho client
   const msgObj = message.toObject();
   if (msgObj.file && msgObj.file.id) msgObj.file.id = msgObj.file.id.toString();
+  if (msgObj.files) msgObj.files = msgObj.files.map((f) => ({ ...f, id: f.id.toString() }));
   io.emit('message', msgObj);
   res.status(201).json(msgObj);
 });

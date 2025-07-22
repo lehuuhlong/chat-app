@@ -18,6 +18,11 @@ export function ChatInput({ username, text, onUsernameChange, onTextChange, onFi
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioURL, setAudioURL] = useState<string | null>(null);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const audioFileRef = useRef<File | null>(null);
 
   const handleTextChange = (value: string) => {
     onTextChange(value);
@@ -50,6 +55,42 @@ export function ChatInput({ username, text, onUsernameChange, onTextChange, onFi
       onFilesChange(newFiles);
       return newFiles;
     });
+  };
+
+  const handleStartRecording = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      alert('Trình duyệt không hỗ trợ ghi âm!');
+      return;
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const recorder = new window.MediaRecorder(stream);
+    const chunks: BlobPart[] = [];
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunks.push(e.data);
+    };
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: 'audio/webm' });
+      setAudioBlob(blob);
+      setAudioURL(URL.createObjectURL(blob));
+      // Lưu file audio vào ref, không gọi setState trong render
+      audioFileRef.current = new File([blob], `voice-message-${Date.now()}.webm`, { type: 'audio/webm' });
+      // Thêm file audio vào danh sách file gửi (dùng setState trong callback này là an toàn)
+      setSelectedFiles((prev) => {
+        const newFiles = [...prev, audioFileRef.current!];
+        onFilesChange(newFiles);
+        return newFiles;
+      });
+    };
+    setMediaRecorder(recorder);
+    recorder.start();
+    setIsRecording(true);
+  };
+
+  const handleStopRecording = () => {
+    if (mediaRecorder) {
+      mediaRecorder.stop();
+      setIsRecording(false);
+    }
   };
 
   return (
@@ -104,6 +145,44 @@ export function ChatInput({ username, text, onUsernameChange, onTextChange, onFi
               />
             </svg>
           </label>
+          {/* Nút ghi âm voice message */}
+          <button
+            type="button"
+            onClick={isRecording ? handleStopRecording : handleStartRecording}
+            className={`w-10 h-10 rounded-lg flex items-center justify-center border transition-all duration-200 ml-1 ${
+              isRecording ? 'bg-red-100 border-red-400' : 'bg-gray-100 border-gray-300 hover:bg-gray-200'
+            }`}
+            title={isRecording ? 'Dừng ghi âm' : 'Ghi âm tin nhắn thoại'}
+          >
+            {isRecording ? (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="w-6 h-6 text-red-500 animate-pulse"
+              >
+                <circle cx="12" cy="12" r="8" fill="red" />
+              </svg>
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="w-6 h-6 text-gray-600"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 18.25v1.25m0 0c-3.25 0-6-2.75-6-6V9.75m12 0v3.75c0 3.25-2.75 6-6 6zm0 0V19.5m0 0h-4.5m4.5 0h4.5"
+                />
+                <rect x="9" y="3" width="6" height="10" rx="3" fill="currentColor" />
+              </svg>
+            )}
+          </button>
         </div>
         {selectedFiles.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-1">

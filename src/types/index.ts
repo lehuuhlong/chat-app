@@ -10,4 +10,11 @@ export interface Message {
     mimetype: string;
     size: number;
   };
+  files?: {
+    id: string;
+    filename: string;
+    originalname: string;
+    mimetype: string;
+    size: number;
+  }[];
 }
