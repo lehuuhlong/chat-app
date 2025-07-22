@@ -13,7 +13,7 @@ const handleFileDownload = async (e: React.MouseEvent<HTMLAnchorElement, MouseEv
   try {
     e.preventDefault();
     const res = await fetch(`${API_URL}/api/files/${fileId}`);
-    if (!res.ok) throw new Error('Không thể tải file');
+    if (!res.ok) throw new Error('Failed to download file');
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -44,7 +44,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
               e.stopPropagation();
               onDelete(message._id);
             }}
-            aria-label="Xóa tin nhắn"
+            aria-label="Delete message"
             className="absolute -right-2 -top-2 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400"
           >
             ×
@@ -52,7 +52,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
         )}
         <div className="text-xs font-semibold mb-1 flex items-center gap-1">
           <span>{message.username}</span>
-          {isOwn && <span className="text-[10px] text-indigo-200">(Bạn)</span>}
+          {isOwn && <span className="text-[10px] text-indigo-200">(You)</span>}
         </div>
         <div>{message.text}</div>
         {message.file && message.file.id ? (
@@ -63,7 +63,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs text-blue-700 underline flex items-center gap-1 hover:text-blue-900 focus:outline-none cursor-pointer select-auto"
-              title="Tải file về máy"
+              title="Download file"
               onClick={(e) => handleFileDownload(e, message.file!.id, message.file!.originalname, API_URL)}
             >
               <span role="img" aria-label="file">
