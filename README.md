@@ -1,6 +1,4 @@
-```bash
 Deployment of a Next.js Chat Application: [https://chat-app-three-theta-95.vercel.app](https://chat-app-three-theta-95.vercel.app)
-```
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
