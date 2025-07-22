@@ -1,10 +1,11 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import io from 'socket.io-client';
 import { Message } from '@/types';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
 import { DeleteModal } from './DeleteModal';
+import { TypingIndicator } from './TypingIndicator';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 let socket: any;
@@ -14,6 +15,7 @@ export default function Chat() {
   const [text, setText] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [username, setUsername] = useState('');
+  const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; messageId: string | null }>({
     isOpen: false,
     messageId: null,
@@ -29,6 +31,20 @@ export default function Chat() {
     });
     socket.on('messageDeleted', (messageId: string) => {
       setMessages((prev) => prev.filter((msg) => msg._id !== messageId));
+    });
+    socket.on('typing', (username: string) => {
+      setTypingUsers((prev) => {
+        const newSet = new Set(prev);
+        newSet.add(username);
+        return newSet;
+      });
+    });
+    socket.on('stopTyping', (username: string) => {
+      setTypingUsers((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(username);
+        return newSet;
+      });
     });
     return () => socket.disconnect();
   }, []);
@@ -69,7 +85,20 @@ export default function Chat() {
             onTextChange={setText}
             onFileChange={setFile}
             onSubmit={handleSendMessage}
+            onTyping={() => {
+              if (username) {
+                socket.emit('typing', username);
+              }
+            }}
+            onStopTyping={() => {
+              if (username) {
+                socket.emit('stopTyping', username);
+              }
+            }}
           />
+          <div className="relative">
+            <TypingIndicator typingUsers={typingUsers} currentUser={username} />
+          </div>
         </div>
       </div>
       <DeleteModal

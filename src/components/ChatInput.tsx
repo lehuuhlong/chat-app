@@ -1,5 +1,6 @@
 'use client';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
+import { EmojiPicker } from './EmojiPicker';
 
 interface ChatInputProps {
   username: string;
@@ -8,10 +9,34 @@ interface ChatInputProps {
   onTextChange: (text: string) => void;
   onFileChange: (file: File | null) => void;
   onSubmit: (e: React.FormEvent) => void;
+  onTyping?: () => void;
+  onStopTyping?: () => void;
 }
 
-export function ChatInput({ username, text, onUsernameChange, onTextChange, onFileChange, onSubmit }: ChatInputProps) {
+export function ChatInput({ username, text, onUsernameChange, onTextChange, onFileChange, onSubmit, onTyping, onStopTyping }: ChatInputProps) {
   const fileInput = useRef<HTMLInputElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+
+  const handleTextChange = (value: string) => {
+    onTextChange(value);
+
+    if (onTyping) {
+      onTyping();
+
+      // Clear previous timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
+      // Set new timeout
+      typingTimeoutRef.current = setTimeout(() => {
+        if (onStopTyping) {
+          onStopTyping();
+        }
+      }, 1000);
+    }
+  };
 
   return (
     <form onSubmit={onSubmit} className="flex items-center gap-3 p-4 border-t bg-white shadow-lg">
@@ -23,12 +48,34 @@ export function ChatInput({ username, text, onUsernameChange, onTextChange, onFi
         required
       />
       <div className="flex-1 flex items-center gap-2">
-        <input
-          className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200 shadow-sm placeholder:text-gray-600 text-gray-900"
-          placeholder="Type a message..."
-          value={text}
-          onChange={(e) => onTextChange(e.target.value)}
-        />
+        <div className="relative flex-1">
+          <input
+            className="w-full rounded-lg border border-gray-300 bg-white pl-4 pr-14 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200 shadow-sm placeholder:text-gray-600 text-gray-900"
+            placeholder="Type a message..."
+            value={text}
+            onChange={(e) => handleTextChange(e.target.value)}
+          />
+          <button
+            type="button"
+            onClick={() => setIsEmojiPickerOpen(!isEmojiPickerOpen)}
+            className="absolute right-0 top-1/2 -translate-y-1/2 p-2 transition-opacity hover:opacity-70"
+          >
+            <span role="img" aria-label="emoji" className="text-xl">
+              😊
+            </span>
+          </button>
+          {isEmojiPickerOpen && (
+            <div className="absolute right-0 bottom-full mb-2 z-50 shadow-xl rounded-lg border border-gray-200">
+              <EmojiPicker
+                onSelect={(emoji) => {
+                  onTextChange(text + emoji.native);
+                  setIsEmojiPickerOpen(false);
+                }}
+                onClose={() => setIsEmojiPickerOpen(false)}
+              />
+            </div>
+          )}
+        </div>
         <label
           className="cursor-pointer flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 transition-all duration-200 border border-gray-300"
           title="Attach file"

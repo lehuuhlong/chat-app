@@ -171,6 +171,17 @@ io.on('connection', (socket) => {
     await message.save();
     io.emit('message', message);
   });
+
+  // Xử lý sự kiện typing
+  socket.on('typing', (username) => {
+    // Gửi đến tất cả client khác trừ người gửi
+    socket.broadcast.emit('userTyping', username);
+  });
+
+  socket.on('stopTyping', (username) => {
+    // Gửi đến tất cả client khác trừ người gửi
+    socket.broadcast.emit('userStoppedTyping', username);
+  });
 });
 
 const PORT = process.env.PORT || 5000;
