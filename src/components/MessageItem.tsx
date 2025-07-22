@@ -1,7 +1,8 @@
 'use client';
 import { Message } from '@/types';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import Image from 'next/image';
+import { ImageViewer } from './ImageViewer';
 
 interface MessageItemProps {
   message: Message;
@@ -57,6 +58,7 @@ const formatMessageText = (text: string) => {
 
 export const MessageItem = React.memo(function MessageItem({ message, isOwn, onDelete, API_URL }: MessageItemProps) {
   const formattedText = useMemo(() => formatMessageText(message.text), [message.text]);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
 
   return (
     <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
@@ -99,21 +101,49 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
               {message.file.originalname}
             </a>
             {isImage(message.file.originalname) && (
-              <div className="mt-2 rounded-lg overflow-hidden">
-                <div className="relative w-[300px] h-[200px]">
-                  <Image
+              <>
+                <div
+                  className="mt-2 rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                  onClick={() => setIsViewerOpen(true)}
+                >
+                  <div className="relative w-[300px] h-[200px] group">
+                    <Image
+                      src={`${API_URL}/api/files/${message.file.id}`}
+                      alt={message.file.originalname}
+                      fill
+                      sizes="300px"
+                      className="object-contain"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                        className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                {isViewerOpen && (
+                  <ImageViewer
                     src={`${API_URL}/api/files/${message.file.id}`}
                     alt={message.file.originalname}
-                    fill
-                    sizes="300px"
-                    className="object-contain"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                    }}
+                    onClose={() => setIsViewerOpen(false)}
                   />
-                </div>
-              </div>
+                )}
+              </>
             )}
           </div>
         ) : null}
