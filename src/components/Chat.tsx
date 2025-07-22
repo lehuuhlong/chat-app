@@ -103,37 +103,39 @@ export default function Chat() {
 
   return (
     <>
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-100 to-indigo-200">
-        <div className="w-full max-w-md bg-white rounded-xl shadow-lg flex flex-col h-[80vh]">
-          <div className="px-6 py-4 border-b flex items-center justify-between">
-            <span className="font-bold text-lg text-indigo-700">💬 Messenger Chat</span>
-            <span className="text-xs text-gray-600">{username ? `You: ${username}` : 'Not signed in'}</span>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-100 to-indigo-200 dark:from-zinc-900 dark:to-zinc-800 transition-colors">
+        <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-xl shadow-lg flex flex-col h-[80vh] transition-colors">
+          <div className="px-6 py-4 border-b flex items-center justify-between bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-800 transition-colors">
+            <span className="font-bold text-lg text-indigo-700 dark:text-yellow-300">💬 Messenger Chat</span>
+            <span className="text-xs text-gray-600 dark:text-gray-300">{username ? `You: ${username}` : 'Not signed in'}</span>
           </div>
-          <div className="px-6 py-2 border-b bg-blue-50 text-xs text-gray-700 flex flex-wrap gap-2 items-center min-h-[32px]">
+          <div className="px-6 py-2 border-b bg-blue-50 dark:bg-zinc-800 text-xs text-gray-700 dark:text-gray-200 flex flex-wrap gap-2 items-center min-h-[32px] transition-colors">
             <span className="font-semibold">Online:</span>
             {onlineUsers.length === 0 ? (
-              <span className="italic text-gray-400">No one online</span>
+              <span className="italic text-gray-400 dark:text-gray-500">No one online</span>
             ) : (
               onlineUsers.map((user) => (
                 <span
                   key={user}
-                  className={`px-2 py-1 rounded bg-green-100 text-green-700 font-medium ${user === username ? 'border border-green-400' : ''}`}
+                  className={`px-2 py-1 rounded bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200 font-medium ${
+                    user === username ? 'border border-green-400 dark:border-green-600' : ''
+                  }`}
                 >
                   {user}
                 </span>
               ))
             )}
           </div>
-          <div className="px-6 py-2 border-b bg-white flex items-center gap-2">
+          <div className="px-6 py-2 border-b bg-white dark:bg-zinc-900 flex items-center gap-2 transition-colors">
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Tìm kiếm tin nhắn hoặc tên..."
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200 shadow-sm placeholder:text-gray-500 bg-white text-gray-900"
+              className="w-full rounded-lg border border-gray-300 dark:border-zinc-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200 shadow-sm placeholder:text-gray-500 bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100"
             />
             {search && (
-              <button onClick={() => setSearch('')} className="text-gray-400 hover:text-red-500 text-lg px-2">
+              <button onClick={() => setSearch('')} className="text-gray-400 dark:text-gray-500 hover:text-red-500 text-lg px-2">
                 ×
               </button>
             )}

@@ -173,8 +173,10 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
     <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
       <div
         className={`rounded-2xl px-4 py-2 max-w-[80%] shadow-sm relative group ${
-          isOwn ? 'bg-indigo-500 text-white' : 'bg-white text-gray-900 border'
-        }`}
+          isOwn
+            ? 'bg-indigo-500 text-white dark:bg-indigo-700'
+            : 'bg-white text-gray-900 border dark:bg-zinc-900 dark:text-gray-100 dark:border-zinc-700'
+        } transition-colors`}
       >
         {isOwn && (
           <>
@@ -184,14 +186,14 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
                 onDelete(message._id);
               }}
               aria-label="Delete message"
-              className="absolute -right-2 -top-2 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400"
+              className="absolute -right-2 -top-2 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-red-600 dark:bg-red-700 dark:hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-400"
             >
               ×
             </button>
             <button
               onClick={() => setIsEditing((v) => !v)}
               aria-label="Edit message"
-              className="absolute -right-2 top-6 w-6 h-6 bg-yellow-400 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+              className="absolute -right-2 top-6 w-6 h-6 bg-yellow-400 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-yellow-500 dark:bg-yellow-600 dark:hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-300"
             >
               ✎
             </button>
@@ -204,7 +206,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
         {isEditing ? (
           <div className="flex gap-2 items-center">
             <input
-              className="rounded px-2 py-1 text-sm text-gray-900 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="rounded px-2 py-1 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
               autoFocus
@@ -213,15 +215,15 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
                 if (e.key === 'Escape') setIsEditing(false);
               }}
             />
-            <button onClick={handleEdit} className="text-green-600 hover:text-green-800 font-bold">
+            <button onClick={handleEdit} className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-bold">
               Lưu
             </button>
-            <button onClick={() => setIsEditing(false)} className="text-gray-400 hover:text-red-500 font-bold">
+            <button onClick={() => setIsEditing(false)} className="text-gray-400 dark:text-gray-500 hover:text-red-500 font-bold">
               Hủy
             </button>
           </div>
         ) : (
-          <div className={isOwn ? 'text-white' : 'text-gray-900'}>{search ? highlight(message.text, search) : formattedText}</div>
+          <div className={isOwn ? 'text-white' : 'text-gray-900 dark:text-gray-100'}>{search ? highlight(message.text, search) : formattedText}</div>
         )}
         {Array.isArray(message.files) && message.files.length > 0 ? (
           <div className="flex flex-wrap gap-2 mt-1">

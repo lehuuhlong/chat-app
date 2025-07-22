@@ -94,9 +94,12 @@ export function ChatInput({ username, text, onUsernameChange, onTextChange, onFi
   };
 
   return (
-    <form onSubmit={onSubmit} className="flex items-center gap-3 p-4 border-t bg-white shadow-lg">
+    <form
+      onSubmit={onSubmit}
+      className="flex items-center gap-3 p-4 border-t bg-white dark:bg-zinc-900 shadow-lg border-gray-200 dark:border-zinc-800 transition-colors"
+    >
       <input
-        className="w-1/4 min-w-[120px] rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200 shadow-sm placeholder:text-gray-600 text-gray-900"
+        className="w-1/4 min-w-[120px] rounded-lg border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200 shadow-sm placeholder:text-gray-600 dark:placeholder:text-gray-400 text-gray-900 dark:text-gray-100"
         placeholder="Your name"
         value={username}
         onChange={(e) => onUsernameChange(e.target.value)}
@@ -106,7 +109,7 @@ export function ChatInput({ username, text, onUsernameChange, onTextChange, onFi
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <input
-              className="w-full rounded-lg border border-gray-300 bg-white pl-4 pr-14 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200 shadow-sm placeholder:text-gray-600 text-gray-900"
+              className="w-full rounded-lg border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 pl-4 pr-14 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200 shadow-sm placeholder:text-gray-600 dark:placeholder:text-gray-400 text-gray-900 dark:text-gray-100"
               placeholder="Type a message..."
               value={text}
               onChange={(e) => handleTextChange(e.target.value)}
@@ -133,7 +136,7 @@ export function ChatInput({ username, text, onUsernameChange, onTextChange, onFi
             )}
           </div>
           <label
-            className="cursor-pointer flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 transition-all duration-200 border border-gray-300"
+            className="cursor-pointer flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all duration-200 border border-gray-300 dark:border-zinc-700"
             title="Attach files"
           >
             <input type="file" ref={fileInput} onChange={handleFileChange} className="hidden" multiple />
@@ -150,7 +153,9 @@ export function ChatInput({ username, text, onUsernameChange, onTextChange, onFi
             type="button"
             onClick={isRecording ? handleStopRecording : handleStartRecording}
             className={`w-10 h-10 rounded-lg flex items-center justify-center border transition-all duration-200 ml-1 ${
-              isRecording ? 'bg-red-100 border-red-400' : 'bg-gray-100 border-gray-300 hover:bg-gray-200'
+              isRecording
+                ? 'bg-red-100 border-red-400 dark:bg-red-900 dark:border-red-700'
+                : 'bg-gray-100 dark:bg-zinc-800 border-gray-300 dark:border-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-700'
             }`}
             title={isRecording ? 'Dừng ghi âm' : 'Ghi âm tin nhắn thoại'}
           >
@@ -187,7 +192,10 @@ export function ChatInput({ username, text, onUsernameChange, onTextChange, onFi
         {selectedFiles.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-1">
             {selectedFiles.map((file, idx) => (
-              <div key={idx} className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded text-xs">
+              <div
+                key={idx}
+                className="flex items-center gap-1 bg-gray-100 dark:bg-zinc-800 px-2 py-1 rounded text-xs text-gray-900 dark:text-gray-100"
+              >
                 {file.type.startsWith('image') ? (
                   <img src={URL.createObjectURL(file)} alt={file.name} className="w-8 h-8 object-cover rounded mr-1" />
                 ) : (
@@ -206,7 +214,7 @@ export function ChatInput({ username, text, onUsernameChange, onTextChange, onFi
           disabled={!username || (!text.trim() && selectedFiles.length === 0)}
           className={`px-6 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 ${
             !username || (!text.trim() && selectedFiles.length === 0)
-              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              ? 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
               : 'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 shadow-md hover:shadow-lg'
           }`}
         >
