@@ -1,6 +1,7 @@
 'use client';
 import { Message } from '@/types';
-import React from 'react';
+import React, { useMemo } from 'react';
+import Image from 'next/image';
 
 interface MessageItemProps {
   message: Message;
@@ -30,7 +31,33 @@ const handleFileDownload = async (e: React.MouseEvent<HTMLAnchorElement, MouseEv
   }
 };
 
+const isImage = (filename: string) => {
+  const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+  const extension = filename.split('.').pop()?.toLowerCase();
+  return extension ? imageExtensions.includes(extension) : false;
+};
+
+const formatMessageText = (text: string) => {
+  // Regular expression for matching URLs
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+
+  // Split text by URLs and map each part
+  const parts = text.split(urlRegex);
+  return parts.map((part, index) => {
+    if (part.match(urlRegex)) {
+      return (
+        <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700 underline">
+          {part}
+        </a>
+      );
+    }
+    return <span key={index}>{part}</span>;
+  });
+};
+
 export const MessageItem = React.memo(function MessageItem({ message, isOwn, onDelete, API_URL }: MessageItemProps) {
+  const formattedText = useMemo(() => formatMessageText(message.text), [message.text]);
+
   return (
     <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
       <div
@@ -54,7 +81,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
           <span>{message.username}</span>
           {isOwn && <span className="text-[10px] text-indigo-200">(You)</span>}
         </div>
-        <div>{message.text}</div>
+        <div className={isOwn ? 'text-white' : 'text-gray-900'}>{formattedText}</div>
         {message.file && message.file.id ? (
           <div className="mt-1">
             <a
@@ -62,7 +89,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
               download={message.file.originalname}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-blue-700 underline flex items-center gap-1 hover:text-blue-900 focus:outline-none cursor-pointer select-auto"
+              className="text-xs text-blue-700 flex items-center gap-1 hover:text-blue-900 focus:outline-none cursor-pointer select-auto"
               title="Download file"
               onClick={(e) => handleFileDownload(e, message.file!.id, message.file!.originalname, API_URL)}
             >
@@ -71,9 +98,28 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
               </span>{' '}
               {message.file.originalname}
             </a>
+            {isImage(message.file.originalname) && (
+              <div className="mt-2 rounded-lg overflow-hidden">
+                <div className="relative w-[300px] h-[200px]">
+                  <Image
+                    src={`${API_URL}/api/files/${message.file.id}`}
+                    alt={message.file.originalname}
+                    fill
+                    sizes="300px"
+                    className="object-contain"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         ) : null}
-        <div className="text-[10px] text-gray-300 mt-1 text-right">{new Date(message.createdAt).toLocaleString()}</div>
+        <div className={`text-[10px] ${isOwn ? 'text-indigo-200' : 'text-gray-400'} mt-1 text-right`}>
+          {new Date(message.createdAt).toLocaleString()}
+        </div>
       </div>
     </div>
   );
