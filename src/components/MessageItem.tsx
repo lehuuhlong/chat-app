@@ -240,7 +240,9 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
             </button>
           </div>
         ) : (
-          <div className={isOwn ? 'text-white' : 'text-gray-900 dark:text-gray-100'}>{search ? highlight(message.text, search) : formattedText}</div>
+          <div className={`${isOwn ? 'text-white' : 'text-gray-900 dark:text-gray-100'} break-words`}>
+            {search ? highlight(message.text, search) : formattedText}
+          </div>
         )}
         {Array.isArray(message.files) && message.files.length > 0 ? (
           <div className="flex flex-wrap gap-2 mt-1">

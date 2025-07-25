@@ -22,6 +22,7 @@ export default function Chat() {
     messageId: null,
   });
   const [search, setSearch] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     fetch(`${API_URL}/api/messages`)
@@ -83,17 +84,27 @@ export default function Chat() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username) return alert('Please enter your name first!');
-    const formData = new FormData();
-    formData.append('username', username);
-    formData.append('text', text);
-    files.forEach((file) => formData.append('files', file));
-    await fetch(`${API_URL}/api/messages`, {
-      method: 'POST',
-      body: formData,
-    });
-    setText('');
-    setFiles([]);
+    if (!username || isSubmitting) return;
+    if (!text.trim() && files.length === 0) return;
+
+    setIsSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append('username', username);
+      formData.append('text', text);
+      files.forEach((file) => formData.append('files', file));
+      await fetch(`${API_URL}/api/messages`, {
+        method: 'POST',
+        body: formData,
+      });
+      setText('');
+      setFiles([]);
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      alert('Gửi tin nhắn thất bại, vui lòng thử lại.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Lọc tin nhắn theo search
@@ -150,6 +161,8 @@ export default function Chat() {
           <ChatInput
             username={username}
             text={text}
+            files={files}
+            isSubmitting={isSubmitting}
             onUsernameChange={setUsername}
             onTextChange={setText}
             onFilesChange={setFiles}

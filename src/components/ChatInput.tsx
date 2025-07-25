@@ -5,6 +5,8 @@ import { EmojiPickerComponent } from './EmojiPicker';
 interface ChatInputProps {
   username: string;
   text: string;
+  files: File[];
+  isSubmitting: boolean;
   onUsernameChange: (username: string) => void;
   onTextChange: (text: string) => void;
   onFilesChange: (files: File[]) => void;
@@ -13,11 +15,21 @@ interface ChatInputProps {
   onStopTyping?: () => void;
 }
 
-export function ChatInput({ username, text, onUsernameChange, onTextChange, onFilesChange, onSubmit, onTyping, onStopTyping }: ChatInputProps) {
+export function ChatInput({
+  username,
+  text,
+  files,
+  isSubmitting,
+  onUsernameChange,
+  onTextChange,
+  onFilesChange,
+  onSubmit,
+  onTyping,
+  onStopTyping,
+}: ChatInputProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioURL, setAudioURL] = useState<string | null>(null);
@@ -40,21 +52,13 @@ export function ChatInput({ username, text, onUsernameChange, onTextChange, onFi
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files ? Array.from(e.target.files) : [];
-    setSelectedFiles((prev) => {
-      const newFiles = [...prev, ...files];
-      onFilesChange(newFiles);
-      return newFiles;
-    });
+    const newFiles = e.target.files ? Array.from(e.target.files) : [];
+    onFilesChange([...files, ...newFiles]);
     if (fileInput.current) fileInput.current.value = '';
   };
 
   const handleRemoveFile = (index: number) => {
-    setSelectedFiles((prev) => {
-      const newFiles = prev.filter((_, i) => i !== index);
-      onFilesChange(newFiles);
-      return newFiles;
-    });
+    onFilesChange(files.filter((_, i) => i !== index));
   };
 
   const handleStartRecording = async () => {
@@ -72,14 +76,8 @@ export function ChatInput({ username, text, onUsernameChange, onTextChange, onFi
       const blob = new Blob(chunks, { type: 'audio/webm' });
       setAudioBlob(blob);
       setAudioURL(URL.createObjectURL(blob));
-      // Lưu file audio vào ref, không gọi setState trong render
-      audioFileRef.current = new File([blob], `voice-message-${Date.now()}.webm`, { type: 'audio/webm' });
-      // Thêm file audio vào danh sách file gửi (dùng setState trong callback này là an toàn)
-      setSelectedFiles((prev) => {
-        const newFiles = [...prev, audioFileRef.current!];
-        onFilesChange(newFiles);
-        return newFiles;
-      });
+      const audioFile = new File([blob], `voice-message-${Date.now()}.webm`, { type: 'audio/webm' });
+      onFilesChange([...files, audioFile]);
     };
     setMediaRecorder(recorder);
     recorder.start();
@@ -103,6 +101,7 @@ export function ChatInput({ username, text, onUsernameChange, onTextChange, onFi
         placeholder="Your name"
         value={username}
         onChange={(e) => onUsernameChange(e.target.value)}
+        disabled={isSubmitting}
         required
       />
       <div className="flex-1 flex flex-col gap-2">
@@ -113,11 +112,13 @@ export function ChatInput({ username, text, onUsernameChange, onTextChange, onFi
               placeholder="Type a message..."
               value={text}
               onChange={(e) => handleTextChange(e.target.value)}
+              disabled={isSubmitting}
             />
             <button
               type="button"
               onClick={() => setIsEmojiPickerOpen(!isEmojiPickerOpen)}
               className="absolute right-0 top-1/2 -translate-y-1/2 p-2 transition-opacity hover:opacity-70"
+              disabled={isSubmitting}
             >
               <span role="img" aria-label="emoji" className="text-xl">
                 😊
@@ -136,10 +137,14 @@ export function ChatInput({ username, text, onUsernameChange, onTextChange, onFi
             )}
           </div>
           <label
-            className="cursor-pointer flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all duration-200 border border-gray-300 dark:border-zinc-700"
+            className={`cursor-pointer flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 border ${
+              isSubmitting
+                ? 'cursor-not-allowed bg-gray-100 dark:bg-zinc-800'
+                : 'hover:bg-gray-100 dark:hover:bg-zinc-800 border-gray-300 dark:border-zinc-700'
+            }`}
             title="Attach files"
           >
-            <input type="file" ref={fileInput} onChange={handleFileChange} className="hidden" multiple />
+            <input type="file" ref={fileInput} onChange={handleFileChange} className="hidden" multiple disabled={isSubmitting} />
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-gray-600">
               <path
                 fillRule="evenodd"
@@ -156,8 +161,9 @@ export function ChatInput({ username, text, onUsernameChange, onTextChange, onFi
               isRecording
                 ? 'bg-red-100 border-red-400 dark:bg-red-900 dark:border-red-700'
                 : 'bg-gray-100 dark:bg-zinc-800 border-gray-300 dark:border-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-700'
-            }`}
+            } ${isSubmitting ? 'cursor-not-allowed' : ''}`}
             title={isRecording ? 'Dừng ghi âm' : 'Ghi âm tin nhắn thoại'}
+            disabled={isSubmitting}
           >
             {isRecording ? (
               <svg
@@ -189,9 +195,9 @@ export function ChatInput({ username, text, onUsernameChange, onTextChange, onFi
             )}
           </button>
         </div>
-        {selectedFiles.length > 0 && (
+        {files.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-1">
-            {selectedFiles.map((file, idx) => (
+            {files.map((file, idx) => (
               <div
                 key={idx}
                 className="flex items-center gap-1 bg-gray-100 dark:bg-zinc-800 px-2 py-1 rounded text-xs text-gray-900 dark:text-gray-100"
@@ -202,7 +208,13 @@ export function ChatInput({ username, text, onUsernameChange, onTextChange, onFi
                   <span className="inline-block w-8 h-8 bg-gray-300 rounded mr-1 flex items-center justify-center">📎</span>
                 )}
                 <span className="truncate max-w-[80px]">{file.name}</span>
-                <button type="button" className="ml-1 text-red-500 hover:text-red-700" onClick={() => handleRemoveFile(idx)} title="Remove file">
+                <button
+                  type="button"
+                  className="ml-1 text-red-500 hover:text-red-700"
+                  onClick={() => handleRemoveFile(idx)}
+                  title="Remove file"
+                  disabled={isSubmitting}
+                >
                   ×
                 </button>
               </div>
@@ -211,14 +223,25 @@ export function ChatInput({ username, text, onUsernameChange, onTextChange, onFi
         )}
         <button
           type="submit"
-          disabled={!username || (!text.trim() && selectedFiles.length === 0)}
-          className={`px-6 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 ${
-            !username || (!text.trim() && selectedFiles.length === 0)
+          disabled={!username || (!text.trim() && files.length === 0) || isSubmitting}
+          className={`px-6 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 flex items-center justify-center ${
+            !username || (!text.trim() && files.length === 0) || isSubmitting
               ? 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
               : 'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 shadow-md hover:shadow-lg'
           }`}
         >
-          Send
+          {isSubmitting ? (
+            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+          ) : (
+            'Send'
+          )}
         </button>
       </div>
     </form>
