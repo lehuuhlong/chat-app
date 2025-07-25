@@ -6,6 +6,7 @@ import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
 import { DeleteModal } from './DeleteModal';
 import { TypingIndicator } from './TypingIndicator';
+import { UsernameModal } from './UsernameModal';
 import { generateRandomName } from '@/lib/name-generator';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -24,6 +25,7 @@ export default function Chat() {
   });
   const [search, setSearch] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUsernameModalOpen, setIsUsernameModalOpen] = useState(false);
 
   useEffect(() => {
     // Check for saved username, or generate a new one
@@ -134,10 +136,15 @@ export default function Chat() {
   return (
     <>
       <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-100 to-indigo-200 dark:from-zinc-900 dark:to-zinc-800 transition-colors">
-        <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-xl shadow-lg flex flex-col h-[80vh] transition-colors">
+        <div className="w-full max-w-4xl bg-white dark:bg-zinc-900 rounded-xl shadow-lg flex flex-col h-[80vh] transition-colors">
           <div className="px-6 py-4 border-b flex items-center justify-between bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-800 transition-colors">
             <span className="font-bold text-lg text-indigo-700 dark:text-yellow-300">💬 Messenger Chat</span>
-            <span className="text-xs text-gray-600 dark:text-gray-300">{username ? `You: ${username}` : 'Not signed in'}</span>
+            <button
+              onClick={() => setIsUsernameModalOpen(true)}
+              className="text-xs text-gray-600 dark:text-gray-300 px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-zinc-800 border border-gray-200 dark:border-zinc-700 transition-colors"
+            >
+              {username ? `You: ${username}` : 'Set Name'}
+            </button>
           </div>
           <div className="px-6 py-2 border-b bg-blue-50 dark:bg-zinc-800 text-xs text-gray-700 dark:text-gray-200 flex flex-wrap gap-2 items-center min-h-[32px] transition-colors">
             <span className="font-semibold">Online:</span>
@@ -182,7 +189,6 @@ export default function Chat() {
             text={text}
             files={files}
             isSubmitting={isSubmitting}
-            onUsernameChange={handleUsernameChange}
             onTextChange={setText}
             onFilesChange={setFiles}
             onSubmit={handleSendMessage}
@@ -216,6 +222,12 @@ export default function Chat() {
             alert('Failed to delete message. Please try again!');
           }
         }}
+      />
+      <UsernameModal
+        isOpen={isUsernameModalOpen}
+        onClose={() => setIsUsernameModalOpen(false)}
+        onSave={handleUsernameChange}
+        currentUsername={username}
       />
     </>
   );

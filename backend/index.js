@@ -65,10 +65,13 @@ const upload = multer({ storage });
 // API routes
 app.get('/api/messages', async (req, res) => {
   const messages = await Message.find().sort({ createdAt: 1 });
-  // Đảm bảo mọi message có file đều trả về file.id là string
+  // Đảm bảo mọi message có file và reactions đều trả về đúng định dạng
   const result = messages.map((msg) => {
     const obj = msg.toObject();
-
+    // Chuyển đổi reactions từ Map sang Object để gửi qua JSON
+    if (obj.reactions) {
+      obj.reactions = Object.fromEntries(obj.reactions);
+    }
     return obj;
   });
   res.json(result);
