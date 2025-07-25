@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { EmojiPickerComponent } from './EmojiPicker';
 
 interface ChatInputProps {
@@ -16,10 +16,18 @@ interface ChatInputProps {
 
 export function ChatInput({ username, text, files, isSubmitting, onTextChange, onFilesChange, onSubmit, onTyping, onStopTyping }: ChatInputProps) {
   const fileInput = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [text]);
 
   const handleTextChange = (value: string) => {
     onTextChange(value);
@@ -29,6 +37,16 @@ export function ChatInput({ username, text, files, isSubmitting, onTextChange, o
       typingTimeoutRef.current = setTimeout(() => {
         if (onStopTyping) onStopTyping();
       }, 1000);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const form = e.currentTarget.form;
+      if (form) {
+        form.requestSubmit();
+      }
     }
   };
 
@@ -102,11 +120,14 @@ export function ChatInput({ username, text, files, isSubmitting, onTextChange, o
           isSubmitting ? 'bg-gray-100 dark:bg-zinc-800' : 'bg-white dark:bg-zinc-900'
         } focus-within:ring-2 focus-within:ring-blue-400`}
       >
-        <input
-          className="flex-1 w-full bg-transparent border-none focus:ring-0 focus:outline-none text-sm placeholder:text-gray-600 dark:placeholder:text-gray-400 text-gray-900 dark:text-gray-100 px-3 py-1.5"
+        <textarea
+          ref={textareaRef}
+          rows={1}
+          className="flex-1 w-full bg-transparent border-none focus:ring-0 focus:outline-none text-sm placeholder:text-gray-600 dark:placeholder:text-gray-400 text-gray-900 dark:text-gray-100 px-3 py-1.5 resize-none overflow-y-hidden"
           placeholder="Type a message..."
           value={text}
           onChange={(e) => handleTextChange(e.target.value)}
+          onKeyDown={handleKeyDown}
           disabled={isSubmitting}
         />
         <div className="flex items-center">
