@@ -115,54 +115,54 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
     if (isImage(file.originalname)) {
       return (
         <>
-        <a
-        href={`${API_URL}/api/files/${file.id}`}
-        download={file.originalname}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-xs text-blue-700 flex items-center gap-1 hover:text-blue-900 focus:outline-none cursor-pointer select-auto"
-        title="Download file"
-        onClick={(e) => handleFileDownload(e, file.id, file.originalname, API_URL)}
-      >
-        <span role="img" aria-label="file">
-          📎
-        </span>{' '}
-        {file.originalname}
-      </a>
-        <div
-          className="mt-2 rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
-          onClick={() => setViewerState({ open: true, src: `${API_URL}/api/files/${file.id}`, alt: file.originalname })}
-        >
-          <div className="relative w-[300px] h-[200px] group">
-            <Image
-              src={`${API_URL}/api/files/${file.id}`}
-              alt={file.originalname}
-              fill
-              sizes="300px"
-              className="object-contain"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-              }}
-            />
-            <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-                className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6"
-                />
-              </svg>
+          <a
+            href={`${API_URL}/api/files/${file.id}`}
+            download={file.originalname}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-blue-700 flex items-center gap-1 hover:text-blue-900 focus:outline-none cursor-pointer select-auto"
+            title="Download file"
+            onClick={(e) => handleFileDownload(e, file.id, file.originalname, API_URL)}
+          >
+            <span role="img" aria-label="file">
+              📎
+            </span>{' '}
+            {file.originalname}
+          </a>
+          <div
+            className="mt-2 rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+            onClick={() => setViewerState({ open: true, src: `${API_URL}/api/files/${file.id}`, alt: file.originalname })}
+          >
+            <div className="relative w-[300px] h-[200px] group">
+              <Image
+                src={`${API_URL}/api/files/${file.id}`}
+                alt={file.originalname}
+                fill
+                sizes="300px"
+                className="object-contain"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                }}
+              />
+              <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6"
+                  />
+                </svg>
+              </div>
             </div>
           </div>
-        </div>
         </>
       );
     }
