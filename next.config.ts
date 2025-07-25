@@ -8,7 +8,7 @@ const remotePattern: RemotePattern = {
   protocol: apiUrl.protocol.replace(':', '') as 'http' | 'https',
   hostname: apiUrl.hostname,
   port: apiUrl.port || '',
-  pathname: '/api/files/**',
+  pathname: '/api/messages/files/**',
 };
 
 const nextConfig: NextConfig = {

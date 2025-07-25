@@ -18,7 +18,7 @@ interface MessageItemProps {
 const handleFileDownload = async (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>, fileId: string, originalname: string, API_URL: string) => {
   try {
     e.preventDefault();
-    const res = await fetch(`${API_URL}/api/files/${fileId}`);
+    const res = await fetch(`${API_URL}/api/messages/files/${fileId}`);
     if (!res.ok) throw new Error('Failed to download file');
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
@@ -32,7 +32,7 @@ const handleFileDownload = async (e: React.MouseEvent<HTMLAnchorElement, MouseEv
       a.remove();
     }, 100);
   } catch (err) {
-    window.open(`${API_URL}/api/files/${fileId}`, '_blank');
+    window.open(`${API_URL}/api/messages/files/${fileId}`, '_blank');
   }
 };
 
@@ -120,7 +120,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
     if (isAudio(file.originalname)) {
       return (
         <audio controls className="w-full mt-1">
-          <source src={`${API_URL}/api/files/${file.id}`} type={file.mimetype || 'audio/webm'} />
+          <source src={`${API_URL}/api/messages/files/${file.id}`} type={file.mimetype || 'audio/webm'} />
           Your browser does not support the audio element.
         </audio>
       );
@@ -129,7 +129,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
       return (
         <>
           <a
-            href={`${API_URL}/api/files/${file.id}`}
+            href={`${API_URL}/api/messages/files/${file.id}`}
             download={file.originalname}
             target="_blank"
             rel="noopener noreferrer"
@@ -144,11 +144,11 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
           </a>
           <div
             className="mt-2 rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
-            onClick={() => setViewerState({ open: true, src: `${API_URL}/api/files/${file.id}`, alt: file.originalname })}
+            onClick={() => setViewerState({ open: true, src: `${API_URL}/api/messages/files/${file.id}`, alt: file.originalname })}
           >
             <div className="relative w-[300px] h-[200px] group">
               <Image
-                src={`${API_URL}/api/files/${file.id}`}
+                src={`${API_URL}/api/messages/files/${file.id}`}
                 alt={file.originalname}
                 fill
                 quality={100}
@@ -183,7 +183,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
     // File khác
     return (
       <a
-        href={`${API_URL}/api/files/${file.id}`}
+        href={`${API_URL}/api/messages/files/${file.id}`}
         download={file.originalname}
         target="_blank"
         rel="noopener noreferrer"
