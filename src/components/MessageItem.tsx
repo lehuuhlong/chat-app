@@ -281,7 +281,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
             {search ? highlight(message.text, search) : formattedText}
           </div>
         )}
-        {Array.isArray(message.files) && message.files.length > 0 ? (
+        {Array.isArray(message.files) && message.files.length > 1 ? (
           <div className="flex flex-wrap gap-2 mt-1">
             {message.files.map((file, idx) => (
               <div key={file.id || idx} className="max-w-[320px]">
