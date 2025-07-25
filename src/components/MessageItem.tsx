@@ -138,6 +138,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
                 src={`${API_URL}/api/files/${file.id}`}
                 alt={file.originalname}
                 fill
+                quality={100}
                 sizes="300px"
                 className="object-contain"
                 onError={(e) => {
