@@ -114,6 +114,21 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
     }
     if (isImage(file.originalname)) {
       return (
+        <>
+        <a
+        href={`${API_URL}/api/files/${file.id}`}
+        download={file.originalname}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-xs text-blue-700 flex items-center gap-1 hover:text-blue-900 focus:outline-none cursor-pointer select-auto"
+        title="Download file"
+        onClick={(e) => handleFileDownload(e, file.id, file.originalname, API_URL)}
+      >
+        <span role="img" aria-label="file">
+          📎
+        </span>{' '}
+        {file.originalname}
+      </a>
         <div
           className="mt-2 rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
           onClick={() => setViewerState({ open: true, src: `${API_URL}/api/files/${file.id}`, alt: file.originalname })}
@@ -148,6 +163,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
             </div>
           </div>
         </div>
+        </>
       );
     }
     // File khác
