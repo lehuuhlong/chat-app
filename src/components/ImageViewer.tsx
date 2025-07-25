@@ -97,6 +97,7 @@ export function ImageViewer({ src, alt, onClose }: ImageViewerProps) {
               className="max-w-[90vw] max-h-[90vh] object-contain pointer-events-none"
               priority
               quality={100}
+              unoptimized
             />
           </motion.div>
         </motion.div>
