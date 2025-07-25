@@ -41,6 +41,11 @@ const messageSchema = new mongoose.Schema({
       size: Number,
     },
   ],
+  reactions: {
+    type: Map,
+    of: [String],
+    default: {},
+  },
   createdAt: { type: Date, default: Date.now },
 });
 const Message = mongoose.model('Message', messageSchema);
@@ -191,6 +196,46 @@ app.patch('/api/messages/:id', async (req, res) => {
     res.status(200).json({ message: 'Message updated successfully' });
   } catch (err) {
     res.status(500).json({ error: 'Error editing message' });
+  }
+});
+
+app.post('/api/messages/:id/react', async (req, res) => {
+  try {
+    const { reaction, username } = req.body;
+    const message = await Message.findById(req.params.id);
+
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    const reactions = message.reactions || new Map();
+    const users = reactions.get(reaction) || [];
+
+    if (users.includes(username)) {
+      // User has already reacted, so remove reaction
+      const updatedUsers = users.filter((user) => user !== username);
+      if (updatedUsers.length === 0) {
+        reactions.delete(reaction);
+      } else {
+        reactions.set(reaction, updatedUsers);
+      }
+    } else {
+      // User has not reacted, so add reaction
+      reactions.set(reaction, [...users, username]);
+    }
+
+    message.reactions = reactions;
+    await message.save();
+
+    io.emit('messageReacted', {
+      _id: message._id,
+      reactions: Object.fromEntries(message.reactions),
+    });
+
+    res.status(200).json({ message: 'Reaction updated successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error reacting to message' });
   }
 });
 

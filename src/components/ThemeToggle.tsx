@@ -26,7 +26,7 @@ export default function ThemeToggle() {
     <button
       onClick={toggleDark}
       className="fixed top-4 right-4 z-50 p-2 rounded-full bg-white/80 dark:bg-zinc-800/80 border border-gray-200 dark:border-zinc-700 shadow hover:scale-110 transition-transform"
-      title={isDark ? 'Chuyển sang Light mode' : 'Chuyển sang Dark mode'}
+      title={isDark ? 'Switch to Light mode' : 'Switch to Dark mode'}
     >
       {isDark ? (
         <svg

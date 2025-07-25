@@ -6,6 +6,7 @@ import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
 import { DeleteModal } from './DeleteModal';
 import { TypingIndicator } from './TypingIndicator';
+import { generateRandomName } from '@/lib/name-generator';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 let socket: any;
@@ -25,6 +26,16 @@ export default function Chat() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    // Check for saved username, or generate a new one
+    const savedUsername = localStorage.getItem('username');
+    if (savedUsername) {
+      setUsername(savedUsername);
+    } else {
+      const newUsername = generateRandomName();
+      setUsername(newUsername);
+      localStorage.setItem('username', newUsername);
+    }
+
     fetch(`${API_URL}/api/messages`)
       .then((res) => res.json())
       .then(setMessages);
@@ -34,11 +45,11 @@ export default function Chat() {
     socket = io(API_URL);
     socket.on('message', (msg: Message) => {
       setMessages((prev) => {
-        // Thông báo nếu cửa sổ không focus và tin nhắn không phải của mình
+        // Notify if window is not focused and message is not from self
         if (typeof window !== 'undefined' && document.visibilityState !== 'visible' && msg.username !== username) {
           if (window.Notification && Notification.permission === 'granted') {
-            new Notification(`Tin nhắn mới từ ${msg.username}`, {
-              body: msg.text || 'Bạn nhận được một tin nhắn mới',
+            new Notification(`New message from ${msg.username}`, {
+              body: msg.text || 'You have a new message',
               icon: '/favicon.ico',
             });
           }
@@ -51,6 +62,9 @@ export default function Chat() {
     });
     socket.on('messageEdited', (data: { _id: string; text: string }) => {
       setMessages((prev) => prev.map((msg) => (msg._id === data._id ? { ...msg, text: data.text } : msg)));
+    });
+    socket.on('messageReacted', (data: { _id: string; reactions: { [key: string]: string[] } }) => {
+      setMessages((prev) => prev.map((msg) => (msg._id === data._id ? { ...msg, reactions: data.reactions } : msg)));
     });
     socket.on('typing', (username: string) => {
       setTypingUsers((prev) => {
@@ -101,10 +115,15 @@ export default function Chat() {
       setFiles([]);
     } catch (error) {
       console.error('Failed to send message:', error);
-      alert('Gửi tin nhắn thất bại, vui lòng thử lại.');
+      alert('Failed to send message. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleUsernameChange = (newUsername: string) => {
+    setUsername(newUsername);
+    localStorage.setItem('username', newUsername);
   };
 
   // Lọc tin nhắn theo search
@@ -142,7 +161,7 @@ export default function Chat() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm kiếm tin nhắn hoặc tên..."
+              placeholder="Search messages or names..."
               className="w-full rounded-lg border border-gray-300 dark:border-zinc-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200 shadow-sm placeholder:text-gray-500 bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100"
             />
             {search && (
@@ -163,7 +182,7 @@ export default function Chat() {
             text={text}
             files={files}
             isSubmitting={isSubmitting}
-            onUsernameChange={setUsername}
+            onUsernameChange={handleUsernameChange}
             onTextChange={setText}
             onFilesChange={setFiles}
             onSubmit={handleSendMessage}

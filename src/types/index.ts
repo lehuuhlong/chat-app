@@ -17,4 +17,5 @@ export interface Message {
     mimetype: string;
     size: number;
   }[];
+  reactions?: { [key: string]: string[] };
 }

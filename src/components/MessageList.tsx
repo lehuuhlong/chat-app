@@ -36,6 +36,7 @@ export function MessageList({ messages, username, onDelete, API_URL, search }: M
             onDelete={onDelete}
             API_URL={API_URL}
             search={search}
+            username={username}
           />
         ))
       )}

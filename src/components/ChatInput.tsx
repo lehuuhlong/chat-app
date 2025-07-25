@@ -63,7 +63,7 @@ export function ChatInput({
 
   const handleStartRecording = async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
-      alert('Trình duyệt không hỗ trợ ghi âm!');
+      alert('Your browser does not support audio recording!');
       return;
     }
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -162,7 +162,7 @@ export function ChatInput({
                 ? 'bg-red-100 border-red-400 dark:bg-red-900 dark:border-red-700'
                 : 'bg-gray-100 dark:bg-zinc-800 border-gray-300 dark:border-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-700'
             } ${isSubmitting ? 'cursor-not-allowed' : ''}`}
-            title={isRecording ? 'Dừng ghi âm' : 'Ghi âm tin nhắn thoại'}
+            title={isRecording ? 'Stop recording' : 'Record a voice message'}
             disabled={isSubmitting}
           >
             {isRecording ? (

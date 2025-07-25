@@ -4,12 +4,15 @@ import React, { useMemo, useState, useEffect } from 'react';
 import Image from 'next/image';
 import { ImageViewer } from './ImageViewer';
 
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+
 interface MessageItemProps {
   message: Message;
   isOwn: boolean;
   onDelete: (messageId: string) => void;
   API_URL: string;
   search?: string;
+  username: string;
 }
 
 const handleFileDownload = async (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>, fileId: string, originalname: string, API_URL: string) => {
@@ -77,7 +80,7 @@ function highlight(text: string, keyword: string) {
   );
 }
 
-export const MessageItem = React.memo(function MessageItem({ message, isOwn, onDelete, API_URL, search }: MessageItemProps) {
+export const MessageItem = React.memo(function MessageItem({ message, isOwn, onDelete, API_URL, search, username }: MessageItemProps) {
   const formattedText = useMemo(() => formatMessageText(message.text), [message.text]);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
@@ -87,6 +90,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
 
   // Thay vì chỉ dùng isViewerOpen, dùng viewerState để lưu src ảnh đang xem
   const [viewerState, setViewerState] = useState<{ open: boolean; src: string; alt: string } | null>(null);
+  const [showReactionPalette, setShowReactionPalette] = useState(false);
 
   const handleEdit = async () => {
     if (editText.trim() === message.text) {
@@ -101,6 +105,15 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
     setIsEditing(false);
   };
 
+  const handleReaction = async (emoji: string) => {
+    await fetch(`${API_URL}/api/messages/${message._id}/react`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reaction: emoji, username }),
+    });
+    setShowReactionPalette(false);
+  };
+
   // Helper render file (ảnh/audio/khác)
   const renderFile = (file: any) => {
     if (!file) return null;
@@ -108,7 +121,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
       return (
         <audio controls className="w-full mt-1">
           <source src={`${API_URL}/api/files/${file.id}`} type={file.mimetype || 'audio/webm'} />
-          Trình duyệt của bạn không hỗ trợ phát audio.
+          Your browser does not support the audio element.
         </audio>
       );
     }
@@ -216,6 +229,30 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
             </button>
           </>
         )}
+        {!isOwn && (
+          <button
+            onClick={() => setShowReactionPalette(true)}
+            className="absolute -right-2 -top-2 w-6 h-6 bg-gray-200 dark:bg-zinc-700 text-gray-600 dark:text-gray-300 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+            aria-label="React to message"
+          >
+            😊
+          </button>
+        )}
+
+        {showReactionPalette && (
+          <div className="absolute bottom-full mb-1 left-0 bg-white dark:bg-zinc-800 border dark:border-zinc-700 rounded-full shadow-lg p-1 flex gap-1 z-10">
+            {REACTION_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                onClick={() => handleReaction(emoji)}
+                className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="text-xs font-semibold mb-1 flex items-center gap-1">
           <span>{search ? highlight(message.username, search) : message.username}</span>
           {isOwn && <span className="text-[10px] text-indigo-200">(You)</span>}
@@ -233,10 +270,10 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
               }}
             />
             <button onClick={handleEdit} className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-bold">
-              Lưu
+              Save
             </button>
             <button onClick={() => setIsEditing(false)} className="text-gray-400 dark:text-gray-500 hover:text-red-500 font-bold">
-              Hủy
+              Cancel
             </button>
           </div>
         ) : (
@@ -256,6 +293,21 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
           <div className="mt-1">{renderFile(message.file)}</div>
         ) : null}
         {viewerState?.open && <ImageViewer src={viewerState.src} alt={viewerState.alt} onClose={() => setViewerState(null)} />}
+        {message.reactions && Object.keys(message.reactions).length > 0 && (
+          <div className="absolute -bottom-4 right-0 flex items-center gap-1">
+            {Object.entries(message.reactions).map(([emoji, users]) =>
+              users.length > 0 ? (
+                <div
+                  key={emoji}
+                  className="bg-white dark:bg-zinc-700 border border-gray-200 dark:border-zinc-600 rounded-full px-2 py-0.5 text-xs flex items-center shadow-sm"
+                >
+                  <span>{emoji}</span>
+                  <span className="ml-1 text-gray-600 dark:text-gray-300">{users.length}</span>
+                </div>
+              ) : null
+            )}
+          </div>
+        )}
         <div className={`text-[10px] ${isOwn ? 'text-indigo-200' : 'text-gray-400'} mt-1 text-right`}>
           {new Date(message.createdAt).toLocaleString()}
         </div>
