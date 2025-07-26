@@ -204,7 +204,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
       <div
         className={`rounded-2xl px-4 py-2 max-w-[80%] shadow-sm relative group ${
           isOwn
-            ? 'bg-indigo-500 text-white dark:bg-indigo-700'
+            ? 'bg-indigo-400 text-white dark:bg-indigo-700'
             : 'bg-white text-gray-900 border dark:bg-zinc-900 dark:text-gray-100 dark:border-zinc-700'
         } transition-colors`}
       >
