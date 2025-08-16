@@ -62,7 +62,8 @@ const formatMessageText = (text: string) => {
         </a>
       );
     }
-    return <span key={index}>{part}</span>;
+    // Giữ nguyên xuống dòng và khoảng trắng cho phần text thường
+    return part;
   });
 };
 
@@ -258,26 +259,32 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
           {isOwn && <span className="text-[10px] text-indigo-200">(You)</span>}
         </div>
         {isEditing ? (
-          <div className="flex gap-2 items-center">
-            <input
-              className="rounded px-2 py-1 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          <div className="flex gap-2 items-start">
+            <textarea
+              className="rounded px-2 py-1 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none min-h-[60px] flex-1"
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
               autoFocus
               onKeyDown={(e) => {
-                if (e.key === 'Enter') handleEdit();
+                if (e.key === 'Enter' && e.ctrlKey) handleEdit();
                 if (e.key === 'Escape') setIsEditing(false);
               }}
+              placeholder="Press Ctrl+Enter to save"
             />
-            <button onClick={handleEdit} className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-bold">
-              Save
-            </button>
-            <button onClick={() => setIsEditing(false)} className="text-gray-400 dark:text-gray-500 hover:text-red-500 font-bold">
-              Cancel
-            </button>
+            <div className="flex flex-col gap-1">
+              <button
+                onClick={handleEdit}
+                className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-bold text-xs"
+              >
+                Save
+              </button>
+              <button onClick={() => setIsEditing(false)} className="text-gray-400 dark:text-gray-500 hover:text-red-500 font-bold text-xs">
+                Cancel
+              </button>
+            </div>
           </div>
         ) : (
-          <div className={`${isOwn ? 'text-white' : 'text-gray-900 dark:text-gray-100'} break-words`}>
+          <div className={`${isOwn ? 'text-white' : 'text-gray-900 dark:text-gray-100'} break-words whitespace-pre-wrap`}>
             {search ? highlight(message.text, search) : formattedText}
           </div>
         )}
