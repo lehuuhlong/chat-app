@@ -23,15 +23,44 @@ const upload = multer({ storage });
 // Routes
 router.get('/', async (req, res) => {
   try {
-    const messages = await Message.find().sort({ createdAt: 1 });
-    const result = messages.map((msg) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // Get total count for pagination info
+    const totalMessages = await Message.countDocuments();
+
+    // Get messages with pagination, sorted by newest first for pagination, then reverse
+    const messages = await Message.find()
+      .sort({ createdAt: -1 }) // Newest first for pagination
+      .skip(skip)
+      .limit(limit);
+
+    // Reverse to show oldest first in the UI
+    const reversedMessages = messages.reverse();
+
+    const result = reversedMessages.map((msg) => {
       const obj = msg.toObject();
       if (obj.reactions) {
         obj.reactions = Object.fromEntries(obj.reactions);
       }
       return obj;
     });
-    res.json(result);
+
+    // Calculate pagination info
+    const hasMore = skip + limit < totalMessages;
+    const totalPages = Math.ceil(totalMessages / limit);
+
+    res.json({
+      messages: result,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalMessages,
+        hasMore,
+        limit,
+      },
+    });
   } catch (err) {
     res.status(500).json({ error: 'Error fetching messages' });
   }

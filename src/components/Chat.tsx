@@ -27,6 +27,41 @@ export default function Chat() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUsernameModalOpen, setIsUsernameModalOpen] = useState(false);
 
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const MESSAGES_PER_PAGE = 10;
+
+  // Load messages with pagination
+  const loadMessages = useCallback(async (pageNum: number = 1, append: boolean = false) => {
+    try {
+      setIsLoadingMore(true);
+      const response = await fetch(`${API_URL}/api/messages?page=${pageNum}&limit=${MESSAGES_PER_PAGE}`);
+      const data = await response.json();
+
+      if (append) {
+        setMessages((prev) => [...data.messages, ...prev]);
+      } else {
+        setMessages(data.messages);
+      }
+
+      setHasMore(data.pagination.hasMore);
+      setPage(pageNum);
+    } catch (error) {
+      console.error('Failed to load messages:', error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, []);
+
+  // Load more messages when scrolling to top
+  const handleLoadMore = useCallback(() => {
+    if (!isLoadingMore && hasMore) {
+      loadMessages(page + 1, true);
+    }
+  }, [loadMessages, page, isLoadingMore, hasMore]);
+
   useEffect(() => {
     // Check for saved username, or generate a new one
     const savedUsername = localStorage.getItem('username');
@@ -38,12 +73,13 @@ export default function Chat() {
       localStorage.setItem('username', newUsername);
     }
 
-    fetch(`${API_URL}/api/messages`)
-      .then((res) => res.json())
-      .then(setMessages);
+    // Load initial messages with pagination
+    loadMessages(1, false);
+
     fetch(`${API_URL}/api/online-users`)
       .then((res) => res.json())
       .then(setOnlineUsers);
+
     socket = io(API_URL);
     socket.on('message', (msg: Message) => {
       setMessages((prev) => {
@@ -136,7 +172,7 @@ export default function Chat() {
   return (
     <>
       <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-100 to-indigo-200 dark:from-zinc-900 dark:to-zinc-800 transition-colors">
-        <div className="w-full max-w-4xl bg-white dark:bg-zinc-900 rounded-xl shadow-lg flex flex-col h-[80vh] transition-colors">
+        <div className="w-full max-w-4xl bg-white dark:bg-zinc-900 rounded-xl shadow-lg flex flex-col h-[90vh] transition-colors">
           <div className="px-6 py-4 border-b flex items-center justify-between bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-800 transition-colors">
             <span className="font-bold text-lg text-indigo-700 dark:text-yellow-300">💬 Messenger Chat</span>
             <button
@@ -183,6 +219,9 @@ export default function Chat() {
             onDelete={(messageId) => setDeleteModal({ isOpen: true, messageId })}
             API_URL={API_URL || ''}
             search={search}
+            onLoadMore={handleLoadMore}
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMore}
           />
           <ChatInput
             username={username}

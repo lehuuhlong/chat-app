@@ -9,14 +9,19 @@ interface MessageListProps {
   onDelete: (messageId: string) => void;
   API_URL: string;
   search?: string;
+  onLoadMore: () => void;
+  hasMore: boolean;
+  isLoadingMore: boolean;
 }
 
 const MemoMessageItem = React.memo(MessageItem);
 
-export function MessageList({ messages, username, onDelete, API_URL, search }: MessageListProps) {
+export function MessageList({ messages, username, onDelete, API_URL, search, onLoadMore, hasMore, isLoadingMore }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [prevMessagesLength, setPrevMessagesLength] = useState(0);
+  const [scrollPosition, setScrollPosition] = useState<number | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -27,33 +32,40 @@ export function MessageList({ messages, username, onDelete, API_URL, search }: M
   const handleScroll = () => {
     if (containerRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
-      // Kiểm tra xem có đang ở cuối cùng không (với tolerance 5px)
+
+      // Check if user scrolled to top to load more messages
+      if (scrollTop === 0 && hasMore && !isLoadingMore) {
+        // Save current scroll position before loading more
+        setScrollPosition(scrollHeight);
+        onLoadMore();
+      }
+
+      // Check if user is at bottom
       const isAtBottom = scrollHeight - scrollTop - clientHeight <= 5;
       setShowScrollButton(!isAtBottom && messages.length > 3);
     }
   };
 
-  // Khi có tin nhắn mới, ẩn button và scroll xuống
+  // Handle scroll position restoration after loading more messages
   useEffect(() => {
-    scrollToBottom();
-    // Delay để đảm bảo scroll hoàn thành trước khi kiểm tra
-    setTimeout(() => {
-      setShowScrollButton(false);
-    }, 100);
-  }, [messages]);
+    if (containerRef.current && scrollPosition && messages.length > prevMessagesLength) {
+      const { scrollHeight } = containerRef.current;
+      const newScrollTop = scrollHeight - scrollPosition;
+      containerRef.current.scrollTop = newScrollTop;
+      setScrollPosition(null);
+    }
+    setPrevMessagesLength(messages.length);
+  }, [messages, scrollPosition, prevMessagesLength]);
 
-  // Kiểm tra initial state
+  // Only auto-scroll to bottom for genuinely new messages (not when loading more)
   useEffect(() => {
-    const checkInitialState = () => {
-      if (containerRef.current && messages.length > 3) {
-        const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
-        const isAtBottom = scrollHeight - scrollTop - clientHeight <= 5;
-        setShowScrollButton(!isAtBottom);
-      }
-    };
-
-    setTimeout(checkInitialState, 200);
-  }, [messages.length]);
+    if (messages.length > prevMessagesLength && !isLoadingMore && !scrollPosition) {
+      // This is a new message, scroll to bottom
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+    }
+  }, [messages.length, prevMessagesLength, isLoadingMore, scrollPosition]);
   return (
     <>
       <div
@@ -61,7 +73,22 @@ export function MessageList({ messages, username, onDelete, API_URL, search }: M
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto px-4 py-2 space-y-3 bg-blue-50 dark:bg-zinc-800 scrollbar-hide transition-colors"
       >
-        {messages.length === 0 ? (
+        {/* Loading indicator for loading more messages */}
+        {isLoadingMore && (
+          <div className="text-center py-2">
+            <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Loading more messages...</p>
+          </div>
+        )}
+
+        {/* No more messages indicator */}
+        {!hasMore && messages.length > 0 && (
+          <div className="text-center py-2">
+            <p className="text-xs text-gray-400 dark:text-gray-500">No more messages</p>
+          </div>
+        )}
+
+        {messages.length === 0 && !isLoadingMore ? (
           <div className="text-center text-gray-600 dark:text-gray-400 mt-10 select-none">No messages yet. Start a conversation!</div>
         ) : (
           messages.map((message) => (
