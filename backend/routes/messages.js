@@ -49,6 +49,12 @@ const upload = multer({
     files: 10, // Maximum 10 files per upload
   },
   fileFilter: (req, file, cb) => {
+    console.log('File filter check:', {
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+    });
+
     const allowedTypes = [
       'image/jpeg',
       'image/jpg',
@@ -64,8 +70,10 @@ const upload = multer({
     ];
 
     if (allowedTypes.includes(file.mimetype)) {
+      console.log('File accepted:', file.originalname);
       cb(null, true);
     } else {
+      console.log('File rejected:', file.originalname, 'Type:', file.mimetype);
       cb(new Error(`File type ${file.mimetype} is not supported`), false);
     }
   },
@@ -117,76 +125,122 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.post('/', upload.array('files', 10), async (req, res) => {
-  try {
-    const { username, text } = req.body;
+router.post(
+  '/',
+  (req, res, next) => {
+    upload.array('files', 10)(req, res, (err) => {
+      if (err) {
+        console.error('Multer error:', err);
 
-    // Validate required fields
-    if (!username || (!text && (!req.files || req.files.length === 0))) {
-      return res.status(400).json({
-        error: 'Username and either text or files are required',
-      });
-    }
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({
+              error: 'File size too large. Maximum size is 10MB per file.',
+            });
+          }
+          if (err.code === 'LIMIT_FILE_COUNT') {
+            return res.status(400).json({
+              error: 'Too many files. Maximum 10 files per message.',
+            });
+          }
+          if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+            return res.status(400).json({
+              error: 'Unexpected field name for file upload.',
+            });
+          }
+        }
 
-    let files = null;
-    if (req.files && req.files.length > 0) {
-      files = req.files.map((f) => ({
-        id: f.id.toString(),
-        filename: f.filename,
-        originalname: f.originalname,
-        mimetype: f.mimetype,
-        size: f.size,
-      }));
-    }
+        if (err.message && err.message.includes('File type')) {
+          return res.status(400).json({
+            error: err.message,
+          });
+        }
 
-    const messageData = {
-      username,
-      text: text || '',
-      files: files || [],
-    };
-
-    // Backward compatibility
-    if (files && files.length === 1) {
-      messageData.file = files[0];
-    }
-
-    const message = new Message(messageData);
-    await message.save();
-
-    const io = getIO();
-    io.emit('message', message.toObject());
-
-    res.status(201).json({
-      success: true,
-      message: message.toObject(),
+        return res.status(500).json({
+          error: 'File upload error. Please try again.',
+        });
+      }
+      next();
     });
-  } catch (err) {
-    console.error('Error creating message:', err);
+  },
+  async (req, res) => {
+    try {
+      console.log('POST /api/messages - Request received:', {
+        username: req.body.username,
+        textLength: req.body.text?.length || 0,
+        filesCount: req.files?.length || 0,
+        origin: req.headers.origin,
+      });
 
-    // Handle multer errors
-    if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({
-        error: 'File size too large. Maximum size is 10MB per file.',
+      const { username, text } = req.body;
+
+      // Validate required fields
+      if (!username || (!text && (!req.files || req.files.length === 0))) {
+        return res.status(400).json({
+          error: 'Username and either text or files are required',
+        });
+      }
+
+      let files = null;
+      if (req.files && req.files.length > 0) {
+        files = req.files.map((f) => ({
+          id: f.id.toString(),
+          filename: f.filename,
+          originalname: f.originalname,
+          mimetype: f.mimetype,
+          size: f.size,
+        }));
+      }
+
+      const messageData = {
+        username,
+        text: text || '',
+        files: files || [],
+      };
+
+      // Backward compatibility
+      if (files && files.length === 1) {
+        messageData.file = files[0];
+      }
+
+      const message = new Message(messageData);
+      await message.save();
+
+      const io = getIO();
+      io.emit('message', message.toObject());
+
+      res.status(201).json({
+        success: true,
+        message: message.toObject(),
+      });
+    } catch (err) {
+      console.error('Error creating message:', err);
+
+      // Handle multer errors
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({
+          error: 'File size too large. Maximum size is 10MB per file.',
+        });
+      }
+
+      if (err.code === 'LIMIT_FILE_COUNT') {
+        return res.status(400).json({
+          error: 'Too many files. Maximum 10 files per message.',
+        });
+      }
+
+      if (err.message && err.message.includes('File type')) {
+        return res.status(400).json({
+          error: err.message,
+        });
+      }
+
+      res.status(500).json({
+        error: 'Error creating message. Please try again.',
       });
     }
-
-    if (err.code === 'LIMIT_FILE_COUNT') {
-      return res.status(400).json({
-        error: 'Too many files. Maximum 10 files per message.',
-      });
-    }
-
-    if (err.message && err.message.includes('File type')) {
-      return res.status(400).json({
-        error: err.message,
-      });
-    }
-
-    res.status(500).json({
-      error: 'Error creating message. Please try again.',
-    });
   }
-});
+);
 
 router.patch('/:id', async (req, res) => {
   try {
