@@ -10,6 +10,7 @@ import { UsernameModal } from './UsernameModal';
 import { generateRandomName } from '@/lib/name-generator';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
+console.log('Chat component - API_URL:', API_URL);
 let socket: any;
 
 export default function Chat() {
@@ -159,6 +160,7 @@ export default function Chat() {
         }
       });
 
+      console.log('Sending message to:', `${API_URL}/api/messages`);
       const response = await fetch(`${API_URL}/api/messages`, {
         method: 'POST',
         body: formData,
