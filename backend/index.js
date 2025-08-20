@@ -23,7 +23,9 @@ const corsOptions = {
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'https://chat-app-three-theta-95.vercel.app',
+    'https://chat-app-vsn7.onrender.com',
     /\.vercel\.app$/,
+    /\.onrender\.com$/,
     /^http:\/\/localhost:\d+$/,
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -49,6 +51,12 @@ app.use((req, res, next) => {
 
 // API Routes
 app.use('/api/messages', messageRoutes);
+
+// Test route for CORS debugging
+app.post('/api/test', (req, res) => {
+  console.log('Test POST received from:', req.headers.origin);
+  res.json({ success: true, message: 'CORS working!' });
+});
 
 // Route for online users (remains here as it's a direct query to the socket service)
 app.get('/api/online-users', (req, res) => {
