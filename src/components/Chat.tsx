@@ -144,16 +144,38 @@ export default function Chat() {
       const formData = new FormData();
       formData.append('username', username);
       formData.append('text', text);
-      files.forEach((file) => formData.append('files', file));
-      await fetch(`${API_URL}/api/messages`, {
+
+      // Add each file to formData with JFIF conversion
+      files.forEach((file, index) => {
+        // Convert JFIF to JPEG if needed
+        if (file.name.toLowerCase().endsWith('.jfif')) {
+          const newFile = new File([file], file.name.replace(/\.jfif$/i, '.jpg'), {
+            type: 'image/jpeg',
+            lastModified: file.lastModified,
+          });
+          formData.append('files', newFile);
+        } else {
+          formData.append('files', file);
+        }
+      });
+
+      const response = await fetch(`${API_URL}/api/messages`, {
         method: 'POST',
         body: formData,
+        // Don't set Content-Type header, let browser set it with boundary for FormData
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
       setText('');
       setFiles([]);
     } catch (error) {
       console.error('Failed to send message:', error);
-      alert('Failed to send message. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Please try again.';
+      alert(`Failed to send message: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }
