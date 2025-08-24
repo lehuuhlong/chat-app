@@ -37,15 +37,62 @@ const handleFileDownload = async (e: React.MouseEvent<HTMLAnchorElement, MouseEv
 };
 
 const isImage = (filename: string) => {
-  const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+  const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'jfif'];
   const extension = filename.split('.').pop()?.toLowerCase();
   return extension ? imageExtensions.includes(extension) : false;
 };
 
 const isAudio = (filename: string) => {
-  const audioExtensions = ['webm', 'mp3', 'wav', 'ogg', 'm4a'];
+  const audioExtensions = ['webm', 'mp3', 'wav', 'ogg', 'm4a', 'aac'];
   const extension = filename.split('.').pop()?.toLowerCase();
   return extension ? audioExtensions.includes(extension) : false;
+};
+
+const isVideo = (filename: string) => {
+  const videoExtensions = ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv'];
+  const extension = filename.split('.').pop()?.toLowerCase();
+  return extension ? videoExtensions.includes(extension) : false;
+};
+
+const isPDF = (filename: string) => {
+  const extension = filename.split('.').pop()?.toLowerCase();
+  return extension === 'pdf';
+};
+
+const isDocument = (filename: string) => {
+  const docExtensions = ['doc', 'docx', 'txt', 'rtf', 'odt'];
+  const extension = filename.split('.').pop()?.toLowerCase();
+  return extension ? docExtensions.includes(extension) : false;
+};
+
+const isSpreadsheet = (filename: string) => {
+  const spreadsheetExtensions = ['xls', 'xlsx', 'csv', 'ods'];
+  const extension = filename.split('.').pop()?.toLowerCase();
+  return extension ? spreadsheetExtensions.includes(extension) : false;
+};
+
+const isPresentation = (filename: string) => {
+  const presentationExtensions = ['ppt', 'pptx', 'odp'];
+  const extension = filename.split('.').pop()?.toLowerCase();
+  return extension ? presentationExtensions.includes(extension) : false;
+};
+
+const isArchive = (filename: string) => {
+  const archiveExtensions = ['zip', 'rar', '7z', 'tar', 'gz'];
+  const extension = filename.split('.').pop()?.toLowerCase();
+  return extension ? archiveExtensions.includes(extension) : false;
+};
+
+const getFileIcon = (filename: string) => {
+  if (isImage(filename)) return '🖼️';
+  if (isAudio(filename)) return '🎵';
+  if (isVideo(filename)) return '🎬';
+  if (isPDF(filename)) return '📄';
+  if (isDocument(filename)) return '📝';
+  if (isSpreadsheet(filename)) return '📊';
+  if (isPresentation(filename)) return '📋';
+  if (isArchive(filename)) return '🗜️';
+  return '📎';
 };
 
 const formatMessageText = (text: string) => {
@@ -115,9 +162,10 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
     setShowReactionPalette(false);
   };
 
-  // Helper render file (ảnh/audio/khác)
+  // Helper render file (ảnh/audio/video/khác)
   const renderFile = (file: any) => {
     if (!file) return null;
+
     if (isAudio(file.originalname)) {
       return (
         <audio controls className="w-full mt-1">
@@ -126,6 +174,16 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
         </audio>
       );
     }
+
+    if (isVideo(file.originalname)) {
+      return (
+        <video controls className="w-full max-w-[400px] mt-1 rounded-lg">
+          <source src={`${API_URL}/api/messages/files/${file.id}`} type={file.mimetype} />
+          Your browser does not support the video element.
+        </video>
+      );
+    }
+
     if (isImage(file.originalname)) {
       return (
         <>
@@ -181,22 +239,35 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
         </>
       );
     }
-    // File khác
+
+    // Other file types (PDF, documents, etc.)
     return (
-      <a
-        href={`${API_URL}/api/messages/files/${file.id}`}
-        download={file.originalname}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-xs text-blue-700 flex items-center gap-1 hover:text-blue-900 focus:outline-none cursor-pointer select-auto"
-        title="Download file"
-        onClick={(e) => handleFileDownload(e, file.id, file.originalname, API_URL)}
-      >
-        <span role="img" aria-label="file">
-          📎
-        </span>{' '}
-        {file.originalname}
-      </a>
+      <div className="mt-2 p-3 bg-gray-100 dark:bg-zinc-800 rounded-lg border border-gray-200 dark:border-zinc-700">
+        <a
+          href={`${API_URL}/api/messages/files/${file.id}`}
+          download={file.originalname}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-blue-700 dark:text-blue-400 flex items-center gap-2 hover:text-blue-900 dark:hover:text-blue-300 focus:outline-none cursor-pointer select-auto"
+          title="Download file"
+          onClick={(e) => handleFileDownload(e, file.id, file.originalname, API_URL)}
+        >
+          <span className="text-2xl" role="img" aria-label="file">
+            {getFileIcon(file.originalname)}
+          </span>
+          <div className="flex-1">
+            <div className="font-medium truncate">{file.originalname}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">{file.size ? `${(file.size / 1024).toFixed(1)} KB` : 'Click to download'}</div>
+          </div>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
+            />
+          </svg>
+        </a>
+      </div>
     );
   };
 

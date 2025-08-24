@@ -14,6 +14,18 @@ interface ChatInputProps {
   onStopTyping?: () => void;
 }
 
+const getFileIcon = (filename: string, type: string) => {
+  if (type.startsWith('image')) return '🖼️';
+  if (type.startsWith('audio')) return '🎵';
+  if (type.startsWith('video')) return '🎬';
+  if (filename.toLowerCase().endsWith('.pdf')) return '📄';
+  if (filename.toLowerCase().match(/\.(doc|docx|txt|rtf|odt)$/)) return '📝';
+  if (filename.toLowerCase().match(/\.(xls|xlsx|csv|ods)$/)) return '📊';
+  if (filename.toLowerCase().match(/\.(ppt|pptx|odp)$/)) return '📋';
+  if (filename.toLowerCase().match(/\.(zip|rar|7z|tar|gz)$/)) return '🗜️';
+  return '📎';
+};
+
 export function ChatInput({ username, text, files, isSubmitting, onTextChange, onFilesChange, onSubmit, onTyping, onStopTyping }: ChatInputProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -99,7 +111,9 @@ export function ChatInput({ username, text, files, isSubmitting, onTextChange, o
               {file.type.startsWith('image') ? (
                 <img src={URL.createObjectURL(file)} alt={file.name} className="w-8 h-8 object-cover rounded mr-1" />
               ) : (
-                <span className="inline-block w-8 h-8 bg-gray-300 rounded mr-1 flex items-center justify-center">📎</span>
+                <span className="inline-block w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded mr-1 flex items-center justify-center text-sm">
+                  {getFileIcon(file.name, file.type)}
+                </span>
               )}
               <span className="truncate max-w-[80px]">{file.name}</span>
               <button

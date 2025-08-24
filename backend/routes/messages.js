@@ -14,21 +14,6 @@ const router = express.Router();
 const storage = new GridFsStorage({
   url: process.env.MONGODB_URI,
   file: (req, file) => {
-    // Acceptable file types
-    const allowedTypes = [
-      'image/jpeg',
-      'image/jpg',
-      'image/png',
-      'image/gif',
-      'image/webp',
-      'image/bmp',
-      'image/jfif',
-      'application/pdf',
-      'text/plain',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    ];
-
     return {
       filename: `${Date.now()}-${file.originalname}`,
       bucketName: 'uploads',
@@ -41,7 +26,7 @@ const storage = new GridFsStorage({
   },
 });
 
-// Multer configuration with file size and type validation
+// Multer configuration with file size validation only
 const upload = multer({
   storage,
   limits: {
@@ -55,27 +40,9 @@ const upload = multer({
       size: file.size,
     });
 
-    const allowedTypes = [
-      'image/jpeg',
-      'image/jpg',
-      'image/png',
-      'image/gif',
-      'image/webp',
-      'image/bmp',
-      'image/jfif',
-      'application/pdf',
-      'text/plain',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    ];
-
-    if (allowedTypes.includes(file.mimetype)) {
-      console.log('File accepted:', file.originalname);
-      cb(null, true);
-    } else {
-      console.log('File rejected:', file.originalname, 'Type:', file.mimetype);
-      cb(new Error(`File type ${file.mimetype} is not supported`), false);
-    }
+    // Allow all file types
+    console.log('File accepted:', file.originalname);
+    cb(null, true);
   },
 });
 
@@ -148,12 +115,6 @@ router.post(
               error: 'Unexpected field name for file upload.',
             });
           }
-        }
-
-        if (err.message && err.message.includes('File type')) {
-          return res.status(400).json({
-            error: err.message,
-          });
         }
 
         return res.status(500).json({
@@ -324,12 +285,6 @@ router.use((error, req, res, next) => {
         error: 'Unexpected field name for file upload.',
       });
     }
-  }
-
-  if (error.message && error.message.includes('File type')) {
-    return res.status(400).json({
-      error: error.message,
-    });
   }
 
   return res.status(500).json({

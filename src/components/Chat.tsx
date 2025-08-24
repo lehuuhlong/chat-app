@@ -10,7 +10,6 @@ import { UsernameModal } from './UsernameModal';
 import { generateRandomName } from '@/lib/name-generator';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
-console.log('Chat component - API_URL:', API_URL);
 let socket: any;
 
 export default function Chat() {
@@ -146,21 +145,11 @@ export default function Chat() {
       formData.append('username', username);
       formData.append('text', text);
 
-      // Add each file to formData with JFIF conversion
-      files.forEach((file, index) => {
-        // Convert JFIF to JPEG if needed
-        if (file.name.toLowerCase().endsWith('.jfif')) {
-          const newFile = new File([file], file.name.replace(/\.jfif$/i, '.jpg'), {
-            type: 'image/jpeg',
-            lastModified: file.lastModified,
-          });
-          formData.append('files', newFile);
-        } else {
-          formData.append('files', file);
-        }
+      // Add each file to formData
+      files.forEach((file) => {
+        formData.append('files', file);
       });
 
-      console.log('Sending message to:', `${API_URL}/api/messages`);
       const response = await fetch(`${API_URL}/api/messages`, {
         method: 'POST',
         body: formData,
