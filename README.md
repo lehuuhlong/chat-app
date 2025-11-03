@@ -2,8 +2,8 @@
 
 <div align="center">
 
-![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)
-![React](https://img.shields.io/badge/React-18-blue?style=for-the-badge&logo=react)
+![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)
+![React](https://img.shields.io/badge/React-19-blue?style=for-the-badge&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)
 ![Socket.io](https://img.shields.io/badge/Socket.io-4-green?style=for-the-badge&logo=socket.io)
 ![MongoDB](https://img.shields.io/badge/MongoDB-7-green?style=for-the-badge&logo=mongodb)
@@ -49,60 +49,82 @@
 
 ## 🏗️ Architecture
 
-### Frontend
+This application uses a **hybrid architecture** optimized for Vercel deployment:
+
+### Next.js Application (Vercel)
+
+- **Frontend**: React components with TypeScript
+- **API Routes**: RESTful endpoints for CRUD operations
+- **Database**: MongoDB connection via Mongoose
+- **File Storage**: GridFS for file uploads/downloads
+
+### Socket.IO Server (Railway/Render)
+
+- **Real-time Communication**: WebSocket connections
+- **Online Users Tracking**: Track and broadcast online users
+- **Typing Indicators**: Real-time typing status
+- **Event Broadcasting**: Emit events for messages, edits, deletes, reactions
+
+> **Why separate Socket.IO?** Vercel's serverless functions don't support WebSocket connections. By keeping Socket.IO as a separate service, we can deploy the main app to Vercel while maintaining real-time features.
+
+### Project Structure
 
 ```
-src/
-├── app/                 # Next.js App Router
-├── components/          # React Components
-│   ├── Chat.tsx        # Main chat container
-│   ├── MessageList.tsx # Message display with pagination
-│   ├── MessageItem.tsx # Individual message component
-│   ├── ChatInput.tsx   # Message input with file upload
-│   └── ...
-├── types/              # TypeScript type definitions
-└── lib/                # Utility functions
-```
-
-### Backend
-
-```
-backend/
-├── config/             # Database configuration
-├── models/             # MongoDB models
-├── routes/             # API endpoints
-├── services/           # Business logic
-│   ├── socket.js      # Socket.io event handlers
-│   └── gridfs.js      # File storage service
-└── index.js           # Express server entry point
+project-root/
+├── src/
+│   ├── app/
+│   │   ├── api/              # Next.js API Routes
+│   │   │   ├── messages/     # Message CRUD endpoints
+│   │   │   ├── files/        # File download endpoint
+│   │   │   └── online-users/ # Online users endpoint
+│   │   ├── page.tsx
+│   │   └── layout.tsx
+│   ├── components/           # React Components
+│   │   ├── Chat.tsx         # Main chat container
+│   │   ├── MessageList.tsx  # Message display with pagination
+│   │   ├── MessageItem.tsx  # Individual message component
+│   │   ├── ChatInput.tsx    # Message input with file upload
+│   │   └── ...
+│   ├── lib/
+│   │   ├── db/              # MongoDB connection & models
+│   │   │   ├── mongodb.ts
+│   │   │   └── models/
+│   │   │       └── Message.ts
+│   │   └── services/        # Business logic
+│   │       ├── gridfs.ts    # File storage service
+│   │       └── socket-client.ts # Socket.IO client
+│   └── types/               # TypeScript type definitions
+├── socket-server/           # Separate Socket.IO server
+│   ├── index.js
+│   ├── package.json
+│   └── .env
+└── ...
 ```
 
 ---
 
 ## 🛠️ Tech Stack
 
-### Frontend
+### Frontend & API
 
-- **Framework**: Next.js 14 (App Router)
+- **Framework**: Next.js 15 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
 - **UI Components**: Custom components with Framer Motion
-- **Real-time**: Socket.io Client
+- **Real-time Client**: Socket.io Client
 - **State Management**: React Hooks
 
-### Backend
+### Backend Services
 
-- **Runtime**: Node.js
-- **Framework**: Express.js
+- **API**: Next.js API Routes (serverless)
 - **Database**: MongoDB with Mongoose
 - **File Storage**: GridFS (MongoDB)
-- **Real-time**: Socket.io
-- **File Upload**: Multer with GridFS Storage
+- **Real-time Server**: Socket.io (separate service)
 
 ### DevOps & Deployment
 
-- **Frontend**: Vercel
-- **Backend**: Railway/Heroku
+- **Frontend + API**: Vercel
+- **Socket.IO Server**: Railway or Render
 - **Database**: MongoDB Atlas
 - **Package Manager**: npm
 
@@ -123,52 +145,50 @@ git clone https://github.com/lehuuhlong/chat-app.git
 cd chat-app
 ```
 
-### 2. Setup Backend
+### 2. Install Dependencies
 
 ```bash
-cd backend
+# Install Next.js dependencies
 npm install
 
-# Create .env file
-cp .env.example .env
-# Edit .env with your MongoDB URI and other configs
-```
-
-### 3. Setup Frontend
-
-```bash
+# Install Socket.IO server dependencies
+cd socket-server
+npm install
 cd ..
-npm install
-
-# Create .env.local file
-cp .env.local.example .env.local
-# Edit .env.local with your API URL
 ```
 
-### 4. Environment Variables
+### 3. Environment Variables
 
-#### Backend (.env)
+#### Next.js (.env.local)
 
 ```env
-MONGODB_URI=mongodb://localhost:27017/chatapp
+# MongoDB Connection
+MONGODB_URI=mongodb://localhost:27017/chat-app
+
+# Socket.IO Server Configuration
+SOCKET_SERVER_URL=http://localhost:5000
+SOCKET_SERVER_SECRET=dev-secret-key-change-in-production
+
+# Public (Browser-accessible)
+NEXT_PUBLIC_SOCKET_URL=http://localhost:5000
+```
+
+#### Socket.IO Server (socket-server/.env)
+
+```env
 PORT=5000
-NODE_ENV=development
+ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+EMIT_SECRET=dev-secret-key-change-in-production
 ```
 
-#### Frontend (.env.local)
-
-```env
-NEXT_PUBLIC_API_URL=http://localhost:5000
-```
-
-### 5. Run the Application
+### 4. Run the Application
 
 ```bash
-# Terminal 1 - Backend
-cd backend
+# Terminal 1 - Socket.IO Server
+cd socket-server
 npm run dev
 
-# Terminal 2 - Frontend
+# Terminal 2 - Next.js Application
 cd ..
 npm run dev
 ```
@@ -177,62 +197,65 @@ Visit `http://localhost:3000` to see the application.
 
 ---
 
-## 📖 Documentation
+## 📖 API Documentation
 
-### API Endpoints
+### REST API Endpoints
 
 #### Messages
 
-- `GET /api/messages` - Get messages with pagination
-- `POST /api/messages` - Send new message with files
-- `PATCH /api/messages/:id` - Edit message
-- `DELETE /api/messages/:id` - Delete message
-- `POST /api/messages/:id/react` - React to message
+- `GET /api/messages?page=1&limit=10` - Get paginated messages
+- `POST /api/messages` - Send new message with files (multipart/form-data)
+- `PATCH /api/messages/:id` - Edit message text
+- `DELETE /api/messages/:id` - Delete message and associated files
+- `POST /api/messages/:id/react` - Toggle reaction on message
 
 #### Files
 
-- `GET /api/messages/files/:id` - Download file
+- `GET /api/files/:id` - Download file from GridFS
 
-#### Real-time Events
+#### Users
+
+- `GET /api/online-users` - Get list of currently online users
+
+### Socket.IO Events
+
+#### Client → Server
+
+- `userOnline` - User comes online
+- `typing` - User starts typing
+- `stopTyping` - User stops typing
+
+#### Server → Client
 
 - `message` - New message received
 - `messageDeleted` - Message deleted
 - `messageEdited` - Message edited
-- `messageReacted` - Message reaction added
-- `typing` / `stopTyping` - Typing indicators
-- `userOnline` / `userOffline` - User presence
+- `messageReacted` - Message reaction updated
+- `onlineUsers` - Online users list updated
+- `userTyping` - User is typing
+- `userStoppedTyping` - User stopped typing
 
-### Components Usage
+---
 
-#### MessageList
+## 🚀 Deployment
 
-```tsx
-<MessageList
-  messages={messages}
-  username={username}
-  onDelete={handleDelete}
-  onLoadMore={handleLoadMore}
-  hasMore={hasMore}
-  isLoadingMore={isLoadingMore}
-  API_URL={API_URL}
-  search={search}
-/>
-```
+See [DEPLOYMENT-GUIDE.md](DEPLOYMENT-GUIDE.md) for detailed deployment instructions.
 
-#### ChatInput
+### Quick Start
 
-```tsx
-<ChatInput
-  username={username}
-  text={text}
-  files={files}
-  onTextChange={setText}
-  onFilesChange={setFiles}
-  onSubmit={handleSubmit}
-  onTyping={handleTyping}
-  onStopTyping={handleStopTyping}
-/>
-```
+1. **Deploy Socket.IO Server** to Railway or Render
+2. **Deploy Next.js** to Vercel
+3. **Configure Environment Variables** on both platforms
+4. **Update CORS Origins** in Socket.IO server
+
+### Free Tier Hosting
+
+- **Vercel**: 100GB bandwidth/month, unlimited deployments
+- **Railway**: $5 free credit/month (~500 hours)
+- **Render**: 750 hours/month free
+- **MongoDB Atlas**: 512MB storage free
+
+**Total Monthly Cost: $0** (within free tiers)
 
 ---
 
@@ -240,9 +263,9 @@ Visit `http://localhost:3000` to see the application.
 
 ### File Upload Limits
 
-- Maximum file size: 16MB
-- Supported formats: Images, Audio, Documents
-- Multiple file upload supported
+- Maximum file size: 10MB per file
+- Maximum files per message: 10
+- Supported formats: All file types (images, audio, video, documents, etc.)
 
 ### Message Pagination
 
@@ -254,30 +277,14 @@ Visit `http://localhost:3000` to see the application.
 
 - Typing timeout: 1 second
 - Automatic reconnection on disconnect
-- Online user tracking
+- Online user tracking with Set data structure
 
 ---
 
-## 🚀 Deployment
+## 📚 Additional Documentation
 
-### Frontend (Vercel)
-
-1. Connect your GitHub repository to Vercel
-2. Set environment variables in Vercel dashboard
-3. Deploy automatically on push to main branch
-
-### Backend (Railway/Heroku)
-
-1. Create new project on Railway/Heroku
-2. Connect GitHub repository
-3. Set environment variables
-4. Deploy
-
-### Database (MongoDB Atlas)
-
-1. Create MongoDB Atlas cluster
-2. Get connection string
-3. Update MONGODB_URI in environment variables
+- [README-MIGRATION.md](README-MIGRATION.md) - Architecture and migration details
+- [DEPLOYMENT-GUIDE.md](DEPLOYMENT-GUIDE.md) - Step-by-step deployment guide
 
 ---
 

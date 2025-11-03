@@ -7,7 +7,6 @@ interface MessageListProps {
   messages: Message[];
   username: string;
   onDelete: (messageId: string) => void;
-  API_URL: string;
   search?: string;
   onLoadMore: () => void;
   hasMore: boolean;
@@ -16,7 +15,7 @@ interface MessageListProps {
 
 const MemoMessageItem = React.memo(MessageItem);
 
-export function MessageList({ messages, username, onDelete, API_URL, search, onLoadMore, hasMore, isLoadingMore }: MessageListProps) {
+export function MessageList({ messages, username, onDelete, search, onLoadMore, hasMore, isLoadingMore }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -97,7 +96,6 @@ export function MessageList({ messages, username, onDelete, API_URL, search, onL
               message={message}
               isOwn={message.username === username}
               onDelete={onDelete}
-              API_URL={API_URL}
               search={search}
               username={username}
             />

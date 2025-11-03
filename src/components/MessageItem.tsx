@@ -10,15 +10,14 @@ interface MessageItemProps {
   message: Message;
   isOwn: boolean;
   onDelete: (messageId: string) => void;
-  API_URL: string;
   search?: string;
   username: string;
 }
 
-const handleFileDownload = async (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>, fileId: string, originalname: string, API_URL: string) => {
+const handleFileDownload = async (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>, fileId: string, originalname: string) => {
   try {
     e.preventDefault();
-    const res = await fetch(`${API_URL}/api/messages/files/${fileId}`);
+    const res = await fetch(`/api/files/${fileId}`);
     if (!res.ok) throw new Error('Failed to download file');
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
@@ -32,7 +31,7 @@ const handleFileDownload = async (e: React.MouseEvent<HTMLAnchorElement, MouseEv
       a.remove();
     }, 100);
   } catch (err) {
-    window.open(`${API_URL}/api/messages/files/${fileId}`, '_blank');
+    window.open(`/api/files/${fileId}`, '_blank');
   }
 };
 
@@ -128,7 +127,7 @@ function highlight(text: string, keyword: string) {
   );
 }
 
-export const MessageItem = React.memo(function MessageItem({ message, isOwn, onDelete, API_URL, search, username }: MessageItemProps) {
+export const MessageItem = React.memo(function MessageItem({ message, isOwn, onDelete, search, username }: MessageItemProps) {
   const formattedText = useMemo(() => formatMessageText(message.text), [message.text]);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
@@ -145,7 +144,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
       setIsEditing(false);
       return;
     }
-    await fetch(`${API_URL}/api/messages/${message._id}`, {
+    await fetch(`/api/messages/${message._id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: editText }),
@@ -154,7 +153,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
   };
 
   const handleReaction = async (emoji: string) => {
-    await fetch(`${API_URL}/api/messages/${message._id}/react`, {
+    await fetch(`/api/messages/${message._id}/react`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reaction: emoji, username }),
@@ -169,7 +168,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
     if (isAudio(file.originalname)) {
       return (
         <audio controls className="w-full mt-1">
-          <source src={`${API_URL}/api/messages/files/${file.id}`} type={file.mimetype || 'audio/webm'} />
+          <source src={`/api/files/${file.id}`} type={file.mimetype || 'audio/webm'} />
           Your browser does not support the audio element.
         </audio>
       );
@@ -178,7 +177,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
     if (isVideo(file.originalname)) {
       return (
         <video controls className="w-full max-w-[400px] mt-1 rounded-lg">
-          <source src={`${API_URL}/api/messages/files/${file.id}`} type={file.mimetype} />
+          <source src={`/api/files/${file.id}`} type={file.mimetype} />
           Your browser does not support the video element.
         </video>
       );
@@ -188,13 +187,13 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
       return (
         <>
           <a
-            href={`${API_URL}/api/messages/files/${file.id}`}
+            href={`/api/files/${file.id}`}
             download={file.originalname}
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-blue-700 flex items-center gap-1 hover:text-blue-900 focus:outline-none cursor-pointer select-auto"
             title="Download file"
-            onClick={(e) => handleFileDownload(e, file.id, file.originalname, API_URL)}
+            onClick={(e) => handleFileDownload(e, file.id, file.originalname)}
           >
             <span role="img" aria-label="file">
               📎
@@ -203,11 +202,11 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
           </a>
           <div
             className="mt-2 rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
-            onClick={() => setViewerState({ open: true, src: `${API_URL}/api/messages/files/${file.id}`, alt: file.originalname })}
+            onClick={() => setViewerState({ open: true, src: `/api/files/${file.id}`, alt: file.originalname })}
           >
             <div className="relative w-[300px] h-[200px] group">
               <Image
-                src={`${API_URL}/api/messages/files/${file.id}`}
+                src={`/api/files/${file.id}`}
                 alt={file.originalname}
                 fill
                 quality={100}
@@ -244,13 +243,13 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
     return (
       <div className="mt-2 p-3 bg-gray-100 dark:bg-zinc-800 rounded-lg border border-gray-200 dark:border-zinc-700">
         <a
-          href={`${API_URL}/api/messages/files/${file.id}`}
+          href={`/api/files/${file.id}`}
           download={file.originalname}
           target="_blank"
           rel="noopener noreferrer"
           className="text-sm text-blue-700 dark:text-blue-400 flex items-center gap-2 hover:text-blue-900 dark:hover:text-blue-300 focus:outline-none cursor-pointer select-auto"
           title="Download file"
-          onClick={(e) => handleFileDownload(e, file.id, file.originalname, API_URL)}
+          onClick={(e) => handleFileDownload(e, file.id, file.originalname)}
         >
           <span className="text-2xl" role="img" aria-label="file">
             {getFileIcon(file.originalname)}

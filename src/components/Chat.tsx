@@ -9,7 +9,7 @@ import { TypingIndicator } from './TypingIndicator';
 import { UsernameModal } from './UsernameModal';
 import { generateRandomName } from '@/lib/name-generator';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
 let socket: any;
 
 export default function Chat() {
@@ -37,19 +37,29 @@ export default function Chat() {
   const loadMessages = useCallback(async (pageNum: number = 1, append: boolean = false) => {
     try {
       setIsLoadingMore(true);
-      const response = await fetch(`${API_URL}/api/messages?page=${pageNum}&limit=${MESSAGES_PER_PAGE}`);
-      const data = await response.json();
+      const response = await fetch(`/api/messages?page=${pageNum}&limit=${MESSAGES_PER_PAGE}`);
 
-      if (append) {
-        setMessages((prev) => [...data.messages, ...prev]);
-      } else {
-        setMessages(data.messages);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      setHasMore(data.pagination.hasMore);
-      setPage(pageNum);
+      const data = await response.json();
+
+      if (data && data.messages) {
+        if (append) {
+          setMessages((prev) => [...data.messages, ...prev]);
+        } else {
+          setMessages(data.messages);
+        }
+
+        if (data.pagination) {
+          setHasMore(data.pagination.hasMore);
+        }
+        setPage(pageNum);
+      }
     } catch (error) {
       console.error('Failed to load messages:', error);
+      setHasMore(false);
     } finally {
       setIsLoadingMore(false);
     }
@@ -76,11 +86,11 @@ export default function Chat() {
     // Load initial messages with pagination
     loadMessages(1, false);
 
-    fetch(`${API_URL}/api/online-users`)
+    fetch('/api/online-users')
       .then((res) => res.json())
       .then(setOnlineUsers);
 
-    socket = io(API_URL);
+    socket = io(SOCKET_URL);
     socket.on('message', (msg: Message) => {
       setMessages((prev) => {
         // Notify if window is not focused and message is not from self
@@ -150,7 +160,7 @@ export default function Chat() {
         formData.append('files', file);
       });
 
-      const response = await fetch(`${API_URL}/api/messages`, {
+      const response = await fetch('/api/messages', {
         method: 'POST',
         body: formData,
         // Don't set Content-Type header, let browser set it with boundary for FormData
@@ -230,7 +240,6 @@ export default function Chat() {
             messages={filteredMessages}
             username={username}
             onDelete={(messageId) => setDeleteModal({ isOpen: true, messageId })}
-            API_URL={API_URL || ''}
             search={search}
             onLoadMore={handleLoadMore}
             hasMore={hasMore}
@@ -266,7 +275,7 @@ export default function Chat() {
         onConfirm={async () => {
           if (!deleteModal.messageId) return;
           try {
-            const response = await fetch(`${API_URL}/api/messages/${deleteModal.messageId}`, {
+            const response = await fetch(`/api/messages/${deleteModal.messageId}`, {
               method: 'DELETE',
             });
             if (!response.ok) throw new Error('Failed to delete message');
