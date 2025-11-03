@@ -120,8 +120,8 @@ export async function POST(request: NextRequest) {
     await message.save();
 
     // Convert to plain object and handle reactions Map
-    const messageObj = message.toObject();
-    if (messageObj.reactions) {
+    const messageObj: any = message.toObject();
+    if (messageObj.reactions && messageObj.reactions instanceof Map) {
       messageObj.reactions = Object.fromEntries(messageObj.reactions);
     }
 

@@ -7,17 +7,19 @@ if (!MONGODB_URI) {
 }
 
 // Extend global type for mongoose caching
-declare global {
-  var mongoose: {
-    conn: typeof mongoose | null;
-    promise: Promise<typeof mongoose> | null;
-  };
+interface MongooseCache {
+  conn: typeof mongoose | null;
+  promise: Promise<typeof mongoose> | null;
 }
 
-let cached = global.mongoose;
+declare global {
+  var mongoose: MongooseCache | undefined;
+}
 
-if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
+let cached: MongooseCache = global.mongoose || { conn: null, promise: null };
+
+if (!global.mongoose) {
+  global.mongoose = cached;
 }
 
 async function connectDB() {
@@ -32,9 +34,9 @@ async function connectDB() {
 
     cached.promise = mongoose
       .connect(MONGODB_URI!, opts)
-      .then((mongoose) => {
+      .then((mongooseInstance) => {
         console.log('MongoDB connected successfully');
-        return mongoose;
+        return mongooseInstance;
       })
       .catch((error) => {
         console.error('MongoDB connection error:', error);

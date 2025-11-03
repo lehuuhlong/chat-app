@@ -41,15 +41,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     await message.save();
 
     // Convert to plain object and handle reactions Map
-    const messageObj = message.toObject();
-    if (messageObj.reactions) {
+    const messageObj: any = message.toObject();
+    if (messageObj.reactions && messageObj.reactions instanceof Map) {
       messageObj.reactions = Object.fromEntries(messageObj.reactions);
     }
 
     // Emit Socket.IO event
+    const reactionsObj = message.reactions instanceof Map ? Object.fromEntries(message.reactions) : message.reactions;
+
     await emitSocketEvent('messageReacted', {
       _id: message._id,
-      reactions: Object.fromEntries(message.reactions),
+      reactions: reactionsObj,
     });
 
     return NextResponse.json(messageObj);
