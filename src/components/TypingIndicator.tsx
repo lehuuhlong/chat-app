@@ -17,15 +17,17 @@ export function TypingIndicator({ typingUsers, currentUser }: TypingIndicatorPro
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 10 }}
-        className="absolute bottom-full left-4 mb-1"
+        className="absolute bottom-full left-5 mb-2"
       >
-        <div className="flex items-center gap-2 text-xs text-gray-500 bg-white/80 backdrop-blur-sm py-1 px-3 rounded-full shadow-sm">
-          <div className="flex gap-1">
-            <span className="animate-bounce">•</span>
-            <span className="animate-bounce [animation-delay:0.2s]">•</span>
-            <span className="animate-bounce [animation-delay:0.4s]">•</span>
+        <div className="flex items-center gap-2 text-xs glass-subtle py-1.5 px-3.5 rounded-2xl shadow-sm" style={{ color: 'var(--text-secondary)' }}>
+          <div className="flex gap-[3px]">
+            <span className="typing-dot"></span>
+            <span className="typing-dot"></span>
+            <span className="typing-dot"></span>
           </div>
-          <span>{otherTypingUsers.length === 1 ? `${otherTypingUsers[0]} is typing...` : `${otherTypingUsers.length} people are typing...`}</span>
+          <span className="font-medium">
+            {otherTypingUsers.length === 1 ? `${otherTypingUsers[0]} is typing...` : `${otherTypingUsers.length} people are typing...`}
+          </span>
         </div>
       </motion.div>
     </AnimatePresence>

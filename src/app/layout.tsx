@@ -1,21 +1,17 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import './globals.css';
 import ThemeToggle from '../components/ThemeToggle';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const inter = Inter({
+  variable: '--font-inter',
   subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700', '800'],
 });
 
 export const metadata: Metadata = {
-  title: 'Chat Application',
-  description: 'A simple chat application using Next.js and Socket.IO',
+  title: 'Messenger — Modern Chat',
+  description: 'A beautifully crafted real-time chat application',
 };
 
 export default function RootLayout({
@@ -26,7 +22,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`min-h-screen ${geistSans.variable} ${geistMono.variable} bg-gradient-to-br from-blue-100 to-indigo-200 dark:from-zinc-900 dark:to-zinc-800 transition-colors`}
+        className={`min-h-screen ${inter.variable} animated-bg transition-colors`}
+        style={{ fontFamily: 'var(--font-inter), Inter, -apple-system, sans-serif' }}
       >
         <ThemeToggle />
         {children}

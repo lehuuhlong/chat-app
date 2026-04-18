@@ -31,38 +31,55 @@ export function UsernameModal({ isOpen, onClose, onSave, currentUsername }: User
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+        onClick={onClose}
       >
         <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-white dark:bg-zinc-800 rounded-lg shadow-xl p-6 w-full max-w-sm"
+          initial={{ scale: 0.9, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.9, opacity: 0, y: 20 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+          className="glass rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4"
+          onClick={(e) => e.stopPropagation()}
         >
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Change Your Name</h3>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">Enter a new name to be displayed in the chat.</p>
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center mx-auto mb-4">
+            <svg className="w-6 h-6 text-indigo-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-bold text-center" style={{ color: 'var(--text-primary)' }}>Change Your Name</h3>
+          <p className="mt-2 text-sm text-center" style={{ color: 'var(--text-secondary)' }}>
+            Enter a new name to be displayed in the chat.
+          </p>
           <div className="mt-4">
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 dark:border-zinc-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100"
+              className="w-full rounded-xl px-4 py-3 text-sm transition-smooth"
+              style={{
+                background: 'var(--input-bg)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--glass-border)',
+              }}
               placeholder="Your new name"
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+              autoFocus
             />
           </div>
-          <div className="mt-6 flex justify-end gap-3">
-            <button
-              onClick={handleSave}
-              className="px-4 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
-            >
-              Save
-            </button>
+          <div className="mt-6 flex gap-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 transition-colors"
+              className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium glass-subtle hover:opacity-80 transition-smooth"
+              style={{ color: 'var(--text-primary)' }}
             >
               Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-white send-btn"
+            >
+              Save
             </button>
           </div>
         </motion.div>

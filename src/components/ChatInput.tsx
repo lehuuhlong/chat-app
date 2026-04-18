@@ -1,5 +1,6 @@
 'use client';
 import { useRef, useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { EmojiPickerComponent } from './EmojiPicker';
 
 interface ChatInputProps {
@@ -37,7 +38,7 @@ export function ChatInput({ username, text, files, isSubmitting, onTextChange, o
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
     }
   }, [text]);
 
@@ -99,79 +100,101 @@ export function ChatInput({ username, text, files, isSubmitting, onTextChange, o
     }
   };
 
+  const canSend = username && (text.trim() || files.length > 0) && !isSubmitting;
+
   return (
-    <form onSubmit={onSubmit} className="p-4 border-t bg-white dark:bg-zinc-900 shadow-lg border-gray-200 dark:border-zinc-800 transition-colors">
-      {files.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-2">
-          {files.map((file, idx) => (
-            <div
-              key={idx}
-              className="flex items-center gap-1 bg-gray-100 dark:bg-zinc-800 px-2 py-1 rounded text-xs text-gray-900 dark:text-gray-100"
-            >
-              {file.type.startsWith('image') ? (
-                <img src={URL.createObjectURL(file)} alt={file.name} className="w-8 h-8 object-cover rounded mr-1" />
-              ) : (
-                <span className="inline-block w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded mr-1 flex items-center justify-center text-sm">
-                  {getFileIcon(file.name, file.type)}
-                </span>
-              )}
-              <span className="truncate max-w-[80px]">{file.name}</span>
-              <button
-                type="button"
-                className="ml-1 text-red-500 hover:text-red-700"
-                onClick={() => handleRemoveFile(idx)}
-                title="Remove file"
-                disabled={isSubmitting}
+    <form onSubmit={onSubmit} className="p-4 border-t border-white/10 dark:border-white/5 rounded-b-3xl">
+      {/* File Previews */}
+      <AnimatePresence>
+        {files.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="flex flex-wrap gap-2 mb-3"
+          >
+            {files.map((file, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="flex items-center gap-1.5 glass-subtle px-2.5 py-1.5 rounded-xl text-xs"
+                style={{ color: 'var(--text-primary)' }}
               >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+                {file.type.startsWith('image') ? (
+                  <img src={URL.createObjectURL(file)} alt={file.name} className="w-8 h-8 object-cover rounded-lg" />
+                ) : (
+                  <span className="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-indigo-500/10 text-sm">
+                    {getFileIcon(file.name, file.type)}
+                  </span>
+                )}
+                <span className="truncate max-w-[80px] font-medium">{file.name}</span>
+                <button
+                  type="button"
+                  className="ml-0.5 w-5 h-5 rounded-full bg-red-500/15 text-red-500 hover:bg-red-500/25 flex items-center justify-center transition-colors"
+                  onClick={() => handleRemoveFile(idx)}
+                  title="Remove file"
+                  disabled={isSubmitting}
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Input Area */}
       <div
-        className={`flex items-center gap-1 rounded-lg border border-gray-300 dark:border-zinc-700 p-1 transition-all ${
-          isSubmitting ? 'bg-gray-100 dark:bg-zinc-800' : 'bg-white dark:bg-zinc-900'
-        } focus-within:ring-2 focus-within:ring-blue-400`}
+        className="flex items-end gap-2 rounded-2xl p-2 transition-smooth"
+        style={{
+          background: 'var(--input-bg)',
+          border: '1px solid var(--glass-border)',
+        }}
       >
         <textarea
           ref={textareaRef}
           rows={1}
-          className="flex-1 w-full bg-transparent border-none focus:ring-0 focus:outline-none text-sm placeholder:text-gray-600 dark:placeholder:text-gray-400 text-gray-900 dark:text-gray-100 px-3 py-1.5 resize-none overflow-y-hidden"
+          className="flex-1 w-full bg-transparent border-none focus:ring-0 focus:outline-none text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 px-3 py-2 resize-none overflow-y-hidden"
+          style={{ color: 'var(--text-primary)', boxShadow: 'none' }}
           placeholder="Type a message..."
           value={text}
           onChange={(e) => handleTextChange(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={isSubmitting}
         />
-        <div className="flex items-center">
+        <div className="flex items-center gap-0.5">
+          {/* Emoji Button */}
           <div className="relative">
             <button
               type="button"
               onClick={() => setIsEmojiPickerOpen(!isEmojiPickerOpen)}
-              className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-zinc-800"
+              className="p-2 rounded-xl hover:bg-indigo-100/50 dark:hover:bg-indigo-500/20 transition-smooth"
               disabled={isSubmitting}
               title="Emoji"
             >
-              <span role="img" aria-label="emoji" className="text-xl">
+              <span role="img" aria-label="emoji" className="text-lg">
                 😊
               </span>
             </button>
             {isEmojiPickerOpen && (
-              <div className="absolute right-0 bottom-full mb-2 z-50 shadow-xl rounded-lg border border-gray-200">
-                <EmojiPickerComponent
-                  onSelect={(emoji) => {
-                    onTextChange(text + emoji.native);
-                    setIsEmojiPickerOpen(false);
-                  }}
-                  onClose={() => setIsEmojiPickerOpen(false)}
-                />
-              </div>
+              <EmojiPickerComponent
+                onSelect={(emoji) => {
+                  onTextChange(text + emoji.native);
+                  setIsEmojiPickerOpen(false);
+                }}
+                onClose={() => setIsEmojiPickerOpen(false)}
+              />
             )}
           </div>
-          <label className={`cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 ${isSubmitting ? 'cursor-not-allowed' : ''}`}>
+
+          {/* File Attachment */}
+          <label className={`cursor-pointer p-2 rounded-xl hover:bg-indigo-100/50 dark:hover:bg-indigo-500/20 transition-smooth ${isSubmitting ? 'cursor-not-allowed opacity-50' : ''}`}>
             <input type="file" ref={fileInput} onChange={handleFileChange} className="hidden" multiple disabled={isSubmitting} />
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-gray-600 dark:text-gray-300">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5" style={{ color: 'var(--text-secondary)' }}>
               <path
                 fillRule="evenodd"
                 d="M18.97 3.659a2.25 2.25 0 00-3.182 0l-10.94 10.94a3.75 3.75 0 105.304 5.303l7.693-7.693a.75.75 0 011.06 1.06l-7.693 7.693a5.25 5.25 0 11-7.424-7.424l10.939-10.94a3.75 3.75 0 115.303 5.304L9.097 18.835l-.008.008-.007.007-.002.002-.003.002A2.25 2.25 0 015.91 15.66l7.81-7.81a.75.75 0 011.061 1.06l-7.81 7.81a.75.75 0 001.054 1.068L18.97 6.84a2.25 2.25 0 000-3.182z"
@@ -179,16 +202,20 @@ export function ChatInput({ username, text, files, isSubmitting, onTextChange, o
               />
             </svg>
           </label>
+
+          {/* Voice Recording */}
           <button
             type="button"
             onClick={isRecording ? handleStopRecording : handleStartRecording}
-            className={`p-2 rounded-lg ${
-              isRecording ? 'text-red-500 animate-pulse' : 'text-gray-600 dark:text-gray-300'
-            } hover:bg-gray-100 dark:hover:bg-zinc-800 ${isSubmitting ? 'cursor-not-allowed' : ''}`}
+            className={`p-2 rounded-xl transition-smooth ${
+              isRecording
+                ? 'bg-red-500/15 text-red-500 animate-pulse'
+                : 'hover:bg-indigo-100/50 dark:hover:bg-indigo-500/20'
+            } ${isSubmitting ? 'cursor-not-allowed opacity-50' : ''}`}
             title={isRecording ? 'Stop recording' : 'Record a voice message'}
             disabled={isSubmitting}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5" style={{ color: isRecording ? undefined : 'var(--text-secondary)' }}>
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -197,27 +224,33 @@ export function ChatInput({ username, text, files, isSubmitting, onTextChange, o
               <rect x="9" y="3" width="6" height="10" rx="3" fill="currentColor" />
             </svg>
           </button>
-          <div className="h-5 w-px bg-gray-300 dark:bg-zinc-600 mx-1"></div>
-          <button
+
+          {/* Divider */}
+          <div className="h-6 w-px bg-gray-300/30 dark:bg-gray-600/30 mx-1"></div>
+
+          {/* Send Button */}
+          <motion.button
             type="submit"
-            disabled={!username || (!text.trim() && files.length === 0) || isSubmitting}
-            className={`p-2 rounded-lg transition-colors ${
-              !username || (!text.trim() && files.length === 0) || isSubmitting
-                ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                : 'text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900'
+            disabled={!canSend}
+            whileTap={canSend ? { scale: 0.9 } : {}}
+            className={`p-2.5 rounded-xl transition-smooth ${
+              canSend
+                ? 'send-btn'
+                : 'bg-gray-200/50 dark:bg-zinc-700/50 cursor-not-allowed'
             }`}
           >
             {isSubmitting ? (
-              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+                className="w-5 h-5"
+                style={{ color: canSend ? 'white' : 'var(--text-secondary)' }}
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -225,7 +258,7 @@ export function ChatInput({ username, text, files, isSubmitting, onTextChange, o
                 />
               </svg>
             )}
-          </button>
+          </motion.button>
         </div>
       </div>
     </form>
