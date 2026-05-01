@@ -1,7 +1,8 @@
 'use client';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ImageViewerProps {
   src: string;
@@ -12,6 +13,12 @@ interface ImageViewerProps {
 export function ImageViewer({ src, alt, onClose }: ImageViewerProps) {
   const [scale, setScale] = useState(1);
   const [isDragging, setIsDragging] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
@@ -20,7 +27,7 @@ export function ImageViewer({ src, alt, onClose }: ImageViewerProps) {
     setScale(newScale);
   };
 
-  return (
+  const content = (
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
@@ -104,4 +111,8 @@ export function ImageViewer({ src, alt, onClose }: ImageViewerProps) {
       </motion.div>
     </AnimatePresence>
   );
+
+  if (!mounted) return null;
+
+  return createPortal(content, document.body);
 }
