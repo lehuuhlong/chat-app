@@ -104,7 +104,13 @@ const formatMessageText = (text: string) => {
   return parts.map((part, index) => {
     if (part.match(urlRegex)) {
       return (
-        <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="underline decoration-1 underline-offset-2 hover:opacity-80 transition-opacity">
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline decoration-1 underline-offset-2 hover:opacity-80 transition-opacity break-all"
+        >
           {part}
         </a>
       );
@@ -124,7 +130,7 @@ function highlight(text: string, keyword: string) {
       </mark>
     ) : (
       part
-    )
+    ),
   );
 }
 
@@ -215,7 +221,9 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
             title="Download file"
             onClick={(e) => handleFileDownload(e, file.id, file.originalname)}
           >
-            <span role="img" aria-label="file">📎</span>{' '}
+            <span role="img" aria-label="file">
+              📎
+            </span>{' '}
             {file.originalname}
           </a>
           <div
@@ -259,11 +267,11 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
 
     // Other file types (PDF, documents, etc.)
     return (
-      <div className={`mt-2 p-3 rounded-xl border transition-smooth ${
-        isOwn
-          ? 'bg-white/10 border-white/20'
-          : 'bg-gray-100/50 dark:bg-zinc-800/50 border-gray-200/50 dark:border-zinc-700/50'
-      }`}>
+      <div
+        className={`mt-2 p-3 rounded-xl border transition-smooth ${
+          isOwn ? 'bg-white/10 border-white/20' : 'bg-gray-100/50 dark:bg-zinc-800/50 border-gray-200/50 dark:border-zinc-700/50'
+        }`}
+      >
         <a
           href={`/api/files/${file.id}`}
           download={file.originalname}
@@ -284,7 +292,14 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
               {file.size ? `${(file.size / 1024).toFixed(1)} KB` : 'Click to download'}
             </div>
           </div>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 flex-shrink-0">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+            className="w-4 h-4 flex-shrink-0"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -304,23 +319,17 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
       </div>
 
       {/* Message Content */}
-      <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} max-w-[75%]`}>
+      <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} max-w-[75%] sm:max-w-[75%] xs:max-w-[85%]`}>
         {/* Username */}
         <div className={`text-[11px] font-semibold mb-1 px-1 flex items-center gap-1.5 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
-          <span style={{ color: 'var(--text-secondary)' }}>
-            {search ? highlight(message.username, search) : message.username}
-          </span>
+          <span style={{ color: 'var(--text-secondary)' }}>{search ? highlight(message.username, search) : message.username}</span>
           {isOwn && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-500 dark:text-indigo-300 font-medium">
-              you
-            </span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-500 dark:text-indigo-300 font-medium">you</span>
           )}
         </div>
 
         {/* Bubble */}
-        <div
-          className={`relative group px-4 py-2.5 ${isOwn ? 'bubble-own' : 'bubble-other'}`}
-        >
+        <div className={`relative group px-4 py-2.5 ${isOwn ? 'bubble-own' : 'bubble-other'}`}>
           {/* Action buttons for own messages */}
           {isOwn && (
             <div className="absolute -top-2 -left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
@@ -333,7 +342,11 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
                 className="w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors shadow-md text-xs"
               >
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                  />
                 </svg>
               </button>
               <button
@@ -342,7 +355,11 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
                 className="w-6 h-6 bg-amber-500 text-white rounded-full flex items-center justify-center hover:bg-amber-600 transition-colors shadow-md text-xs"
               >
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"
+                  />
                 </svg>
               </button>
             </div>
@@ -412,7 +429,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
               </div>
             </div>
           ) : (
-            <div className="break-words whitespace-pre-wrap text-[14px] leading-relaxed">
+            <div className="break-words whitespace-pre-wrap text-[14px] leading-relaxed overflow-hidden text-wrap">
               {search ? highlight(message.text, search) : formattedText}
             </div>
           )}
@@ -445,9 +462,11 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
                   title={users.join(', ')}
                 >
                   <span>{emoji}</span>
-                  <span className="ml-1 font-medium" style={{ color: 'var(--text-secondary)' }}>{users.length}</span>
+                  <span className="ml-1 font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    {users.length}
+                  </span>
                 </motion.div>
-              ) : null
+              ) : null,
             )}
           </div>
         )}
