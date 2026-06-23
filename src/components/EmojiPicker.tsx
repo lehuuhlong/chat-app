@@ -36,7 +36,7 @@ export function EmojiPickerComponent({ onSelect, onClose }: EmojiPickerProps) {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 10, scale: 0.95 }}
         transition={{ duration: 0.2 }}
-        className="fixed bottom-20 right-[calc(50%-160px)] z-[999] shadow-2xl rounded-2xl overflow-hidden"
+        className="fixed bottom-20 right-[calc(50%-160px)] z-[999] shadow-2xl rounded-2xl overflow-hidden mobile-emoji-picker"
       >
         <EmojiPicker
           onEmojiClick={handleEmojiClick}
@@ -47,8 +47,8 @@ export function EmojiPickerComponent({ onSelect, onClose }: EmojiPickerProps) {
           }}
           searchDisabled={false}
           skinTonesDisabled={true}
-          width={320}
-          height={400}
+          width={Math.min(320, typeof window !== 'undefined' ? window.innerWidth - 32 : 320)}
+          height={350}
         />
       </motion.div>
     </AnimatePresence>

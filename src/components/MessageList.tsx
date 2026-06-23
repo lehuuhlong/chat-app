@@ -72,7 +72,7 @@ export function MessageList({ messages, username, onDelete, search, onLoadMore, 
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-5 py-4 space-y-4 custom-scrollbar"
+        className="flex-1 overflow-y-auto px-5 py-4 space-y-4 custom-scrollbar mobile-messages-area"
         style={{ background: 'transparent' }}
       >
         {/* Loading indicator for loading more messages */}
@@ -145,7 +145,7 @@ export function MessageList({ messages, username, onDelete, search, onLoadMore, 
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 10 }}
             onClick={scrollToBottom}
-            className="absolute bottom-28 right-6 w-10 h-10 rounded-full send-btn flex items-center justify-center z-50"
+            className="absolute bottom-28 right-6 w-10 h-10 rounded-full send-btn flex items-center justify-center z-50 mobile-scroll-btn"
             title="Scroll to latest message"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>

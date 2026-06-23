@@ -355,9 +355,144 @@ textarea:focus {
   hyphens: auto;
 }
 
-/* Responsive message container for mobile */
+/* ===== Mobile Responsive Overrides ===== */
+
+/* Use safe viewport height on mobile (avoids iOS address bar issues) */
+@supports (height: 100dvh) {
+  .h-dvh {
+    height: 100dvh;
+  }
+}
+
 @media (max-width: 640px) {
-  .max-w-\[75\%] {
-    max-width: 85% !important;
+  /* Chat container: reduce padding, use full screen */
+  .mobile-chat-wrapper {
+    padding: 0 !important;
+    min-height: 100dvh !important;
+    min-height: 100vh !important;
+  }
+
+  .mobile-chat-container {
+    border-radius: 0 !important;
+    height: 100dvh !important;
+    height: 100vh !important;
+    max-width: 100% !important;
+  }
+
+  /* Header: reduce padding, truncate username */
+  .mobile-header {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    padding-top: 0.625rem !important;
+    padding-bottom: 0.625rem !important;
+  }
+
+  .mobile-username-btn {
+    max-width: 140px;
+  }
+
+  .mobile-username-btn span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 70px;
+    display: inline-block;
+  }
+
+  /* Online users bar: reduce padding */
+  .mobile-online-bar {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    padding-top: 0.375rem !important;
+    padding-bottom: 0.375rem !important;
+  }
+
+  /* Search bar: reduce padding */
+  .mobile-search-bar {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    padding-top: 0.375rem !important;
+    padding-bottom: 0.375rem !important;
+  }
+
+  /* Messages area: reduce padding */
+  .mobile-messages-area {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+
+  /* Message bubbles: wider on mobile */
+  .mobile-msg-content {
+    max-width: 88% !important;
+  }
+
+  /* Images in messages: responsive sizing */
+  .mobile-msg-image {
+    width: 100% !important;
+    max-width: 240px !important;
+    height: auto !important;
+    aspect-ratio: 3 / 2;
+  }
+
+  /* Video in messages: responsive sizing */
+  .mobile-msg-video {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* File attachments in messages */
+  .mobile-msg-files {
+    max-width: 100% !important;
+  }
+
+  /* Chat input: reduce padding */
+  .mobile-chat-input {
+    padding: 0.5rem 0.75rem !important;
+  }
+
+  /* Theme toggle: smaller and repositioned */
+  .mobile-theme-toggle {
+    top: 0.5rem !important;
+    right: 0.5rem !important;
+    width: 2.25rem !important;
+    height: 2.25rem !important;
+  }
+
+  /* Emoji picker: full-width on mobile */
+  .mobile-emoji-picker {
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    bottom: 70px !important;
+  }
+
+  /* Scroll to bottom button: adjust position */
+  .mobile-scroll-btn {
+    right: 1rem !important;
+    bottom: 6rem !important;
+  }
+
+  /* Online user chips: limit text */
+  .mobile-user-chip {
+    max-width: 120px;
+  }
+
+  .mobile-user-chip-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 60px;
+    display: inline-block;
+  }
+
+  /* File preview chips in input */
+  .mobile-file-preview {
+    max-width: 100% !important;
+  }
+
+  .mobile-file-preview span.truncate {
+    max-width: 60px !important;
   }
 }

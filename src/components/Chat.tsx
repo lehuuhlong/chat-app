@@ -212,15 +212,15 @@ export default function Chat() {
 
   return (
     <>
-      <div className="flex items-center justify-center min-h-screen p-4 relative z-10">
+      <div className="flex items-center justify-center min-h-screen p-4 relative z-10 mobile-chat-wrapper">
         <motion.div
           initial={{ opacity: 0, y: 30, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full max-w-3xl glass rounded-3xl flex flex-col h-[92vh]"
+          className="w-full max-w-3xl glass rounded-3xl flex flex-col h-[92vh] mobile-chat-container overflow-hidden"
         >
           {/* Header */}
-          <div className="px-6 py-4 flex items-center justify-between border-b border-white/10 dark:border-white/5 rounded-t-3xl">
+          <div className="px-6 py-4 flex items-center justify-between border-b border-white/10 dark:border-white/5 rounded-t-3xl mobile-header">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
                 <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -237,7 +237,7 @@ export default function Chat() {
             </div>
             <button
               onClick={() => setIsUsernameModalOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl glass-subtle hover:scale-[1.02] transition-smooth cursor-pointer"
+              className="flex items-center gap-2 px-3 py-2 rounded-xl glass-subtle hover:scale-[1.02] transition-smooth cursor-pointer mobile-username-btn"
             >
               <div className={`avatar bg-gradient-to-br ${getAvatarColor(username)} w-7 h-7 text-[11px]`}>
                 {username.charAt(0)}
@@ -252,7 +252,7 @@ export default function Chat() {
           </div>
 
           {/* Online Users Bar */}
-          <div className="px-6 py-2.5 border-b border-white/10 dark:border-white/5 flex items-center gap-2 overflow-x-auto scrollbar-hide">
+          <div className="px-6 py-2.5 border-b border-white/10 dark:border-white/5 flex items-center gap-2 overflow-x-auto scrollbar-hide mobile-online-bar">
             {onlineUsers.length === 0 ? (
               <span className="text-xs italic" style={{ color: 'var(--text-secondary)' }}>No one online</span>
             ) : (
@@ -261,7 +261,7 @@ export default function Chat() {
                   key={user}
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-smooth flex-shrink-0 ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-smooth flex-shrink-0 mobile-user-chip ${
                     user === username
                       ? 'bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-400/30 dark:border-indigo-500/30'
                       : 'glass-subtle'
@@ -269,7 +269,7 @@ export default function Chat() {
                   style={{ color: 'var(--text-primary)' }}
                 >
                   <span className="online-dot"></span>
-                  {user}
+                  <span className="mobile-user-chip-name">{user}</span>
                   {user === username && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 font-semibold">
                       you
@@ -281,7 +281,7 @@ export default function Chat() {
           </div>
 
           {/* Search Bar */}
-          <div className="px-6 py-2.5 border-b border-white/10 dark:border-white/5">
+          <div className="px-6 py-2.5 border-b border-white/10 dark:border-white/5 mobile-search-bar">
             <div className="relative">
               <svg
                 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"

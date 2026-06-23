@@ -103,7 +103,7 @@ export function ChatInput({ username, text, files, isSubmitting, onTextChange, o
   const canSend = username && (text.trim() || files.length > 0) && !isSubmitting;
 
   return (
-    <form onSubmit={onSubmit} className="p-4 border-t border-white/10 dark:border-white/5 rounded-b-3xl">
+    <form onSubmit={onSubmit} className="p-4 border-t border-white/10 dark:border-white/5 rounded-b-3xl mobile-chat-input">
       {/* File Previews */}
       <AnimatePresence>
         {files.length > 0 && (
@@ -119,7 +119,7 @@ export function ChatInput({ username, text, files, isSubmitting, onTextChange, o
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                className="flex items-center gap-1.5 glass-subtle px-2.5 py-1.5 rounded-xl text-xs"
+                className="flex items-center gap-1.5 glass-subtle px-2.5 py-1.5 rounded-xl text-xs mobile-file-preview"
                 style={{ color: 'var(--text-primary)' }}
               >
                 {file.type.startsWith('image') ? (

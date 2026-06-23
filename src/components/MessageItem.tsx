@@ -202,7 +202,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
 
     if (isVideo(file.originalname)) {
       return (
-        <video controls className="w-full max-w-[400px] mt-2 rounded-xl overflow-hidden">
+        <video controls className="w-full max-w-[400px] mt-2 rounded-xl overflow-hidden mobile-msg-video">
           <source src={`/api/files/${file.id}`} type={file.mimetype} />
           Your browser does not support the video element.
         </video>
@@ -230,7 +230,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
             className="mt-2 rounded-xl overflow-hidden cursor-pointer hover:opacity-90 transition-all hover:shadow-lg"
             onClick={() => setViewerState({ open: true, src: `/api/files/${file.id}`, alt: file.originalname })}
           >
-            <div className="relative w-[300px] h-[200px] group">
+            <div className="relative w-full max-w-[300px] h-[200px] group mobile-msg-image">
               <Image
                 src={`/api/files/${file.id}`}
                 alt={file.originalname}
@@ -319,7 +319,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
       </div>
 
       {/* Message Content */}
-      <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} max-w-[75%] sm:max-w-[75%] xs:max-w-[85%]`}>
+      <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} max-w-[75%] mobile-msg-content`}>
         {/* Username */}
         <div className={`text-[11px] font-semibold mb-1 px-1 flex items-center gap-1.5 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
           <span style={{ color: 'var(--text-secondary)' }}>{search ? highlight(message.username, search) : message.username}</span>
@@ -438,7 +438,7 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
           {Array.isArray(message.files) && message.files.length > 1 ? (
             <div className="flex flex-wrap gap-2 mt-1">
               {message.files.map((file, idx) => (
-                <div key={file.id || idx} className="max-w-[320px]">
+                <div key={file.id || idx} className="max-w-[320px] mobile-msg-files">
                   {renderFile(file)}
                 </div>
               ))}

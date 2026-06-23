@@ -35,7 +35,7 @@ export default function ThemeToggle() {
       onClick={toggleDark}
       whileTap={{ scale: 0.9 }}
       whileHover={{ scale: 1.1 }}
-      className="fixed top-5 right-5 z-50 w-11 h-11 rounded-xl glass flex items-center justify-center cursor-pointer transition-smooth"
+      className="fixed top-5 right-5 z-50 w-11 h-11 rounded-xl glass flex items-center justify-center cursor-pointer transition-smooth mobile-theme-toggle"
       title={isDark ? 'Switch to Light mode' : 'Switch to Dark mode'}
     >
       <motion.div
