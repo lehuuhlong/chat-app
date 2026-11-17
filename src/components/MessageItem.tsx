@@ -1,11 +1,14 @@
 'use client';
 import { Message } from '@/types';
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ImageViewer } from './ImageViewer';
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+
+// Ngưỡng để thu gọn tin nhắn dài
+const MAX_COLLAPSED_HEIGHT = 200; // px
 
 interface MessageItemProps {
   message: Message;
@@ -164,6 +167,38 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
   // Thay vì chỉ dùng isViewerOpen, dùng viewerState để lưu src ảnh đang xem
   const [viewerState, setViewerState] = useState<{ open: boolean; src: string; alt: string } | null>(null);
   const [showReactionPalette, setShowReactionPalette] = useState(false);
+
+  // Collapsible long message state
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const textRef = useRef<HTMLDivElement>(null);
+
+  // Đo chiều cao thực tế của text để xác định có cần thu gọn không
+  useEffect(() => {
+    const el = textRef.current;
+    if (el) {
+      setIsOverflowing(el.scrollHeight > MAX_COLLAPSED_HEIGHT);
+    }
+  }, [message.text]);
+
+  const handleCopyText = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(message.text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback
+      const textarea = document.createElement('textarea');
+      textarea.value = message.text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [message.text]);
 
   const handleEdit = async () => {
     if (editText.trim() === message.text) {
@@ -429,8 +464,69 @@ export const MessageItem = React.memo(function MessageItem({ message, isOwn, onD
               </div>
             </div>
           ) : (
-            <div className="break-words whitespace-pre-wrap text-[14px] leading-relaxed overflow-hidden text-wrap">
-              {search ? highlight(message.text, search) : formattedText}
+            <div className="relative">
+              {/* Text content with collapse */}
+              <div
+                ref={textRef}
+                className={`break-words whitespace-pre-wrap text-[14px] leading-relaxed overflow-hidden text-wrap transition-all duration-300 ${
+                  isOverflowing && !isExpanded ? 'max-h-[200px]' : ''
+                }`}
+                style={
+                  isOverflowing && !isExpanded
+                    ? {
+                        WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+                        maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+                      }
+                    : undefined
+                }
+              >
+                {search ? highlight(message.text, search) : formattedText}
+              </div>
+
+              {/* Expand/Collapse & Copy buttons */}
+              {isOverflowing && (
+                <div className={`flex items-center gap-2 mt-1.5 ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                  <button
+                    onClick={() => setIsExpanded((v) => !v)}
+                    className={`text-xs font-medium px-2.5 py-1 rounded-lg transition-all duration-200 ${
+                      isOwn
+                        ? 'text-indigo-200 hover:text-white hover:bg-white/10'
+                        : 'text-indigo-500 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10'
+                    }`}
+                  >
+                    {isExpanded ? '▲ Thu gọn' : '▼ Xem thêm...'}
+                  </button>
+                  <button
+                    onClick={handleCopyText}
+                    className={`text-xs font-medium px-2.5 py-1 rounded-lg transition-all duration-200 flex items-center gap-1 ${
+                      isOwn
+                        ? 'text-indigo-200 hover:text-white hover:bg-white/10'
+                        : 'text-indigo-500 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10'
+                    }`}
+                    title="Copy toàn bộ tin nhắn"
+                  >
+                    {copied ? (
+                      <>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                        Đã copy!
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"
+                          />
+                        </svg>
+                        Copy
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
