@@ -368,14 +368,15 @@ textarea:focus {
   /* Chat container: reduce padding, use full screen */
   .mobile-chat-wrapper {
     padding: 0 !important;
-    min-height: 100dvh !important;
+    /* vh first as a fallback, dvh last so it wins where supported (iOS address bar) */
     min-height: 100vh !important;
+    min-height: 100dvh !important;
   }
 
   .mobile-chat-container {
     border-radius: 0 !important;
-    height: 100dvh !important;
     height: 100vh !important;
+    height: 100dvh !important;
     max-width: 100% !important;
   }
 
@@ -495,4 +496,10 @@ textarea:focus {
   .mobile-file-preview span.truncate {
     max-width: 60px !important;
   }
+}
+
+/* Hide the native clear button of type="search" (we render our own) */
+input[type='search']::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
 }

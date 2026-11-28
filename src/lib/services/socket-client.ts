@@ -1,51 +1,35 @@
 const SOCKET_SERVER_URL = process.env.SOCKET_SERVER_URL || 'http://localhost:5000';
 const SOCKET_SERVER_SECRET = process.env.SOCKET_SERVER_SECRET || 'dev-secret-key-change-in-production';
 
-export async function emitSocketEvent(event: string, data: any): Promise<void> {
+// The API response must not hang if the socket server is slow or asleep (e.g. Render free tier).
+const EMIT_TIMEOUT_MS = 3000;
+
+export async function emitSocketEvent(event: string, data: unknown): Promise<void> {
   try {
     const response = await fetch(`${SOCKET_SERVER_URL}/emit`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        secret: SOCKET_SERVER_SECRET,
-        event,
-        data,
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ secret: SOCKET_SERVER_SECRET, event, data }),
+      signal: AbortSignal.timeout(EMIT_TIMEOUT_MS),
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      console.error('Failed to emit socket event:', error);
-      throw new Error(`Failed to emit socket event: ${error.error || 'Unknown error'}`);
+      const error = await response.json().catch(() => ({}));
+      console.error(`Failed to emit socket event "${event}":`, error);
     }
-
-    const result = await response.json();
-    console.log(`Socket event emitted successfully: ${event}`);
-    return result;
   } catch (error) {
-    console.error('Error emitting socket event:', error);
-    // Don't throw error to prevent API request from failing
-    // Socket emission is not critical for API functionality
+    // Socket emission is not critical for the API request itself.
+    console.error(`Error emitting socket event "${event}":`, error);
   }
 }
 
 export async function getOnlineUsers(): Promise<string[]> {
   try {
     const response = await fetch(`${SOCKET_SERVER_URL}/online-users`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      signal: AbortSignal.timeout(EMIT_TIMEOUT_MS),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch online users');
-    }
-
-    const users = await response.json();
-    return users;
+    if (!response.ok) throw new Error('Failed to fetch online users');
+    return await response.json();
   } catch (error) {
     console.error('Error fetching online users:', error);
     return [];

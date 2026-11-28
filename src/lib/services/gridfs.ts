@@ -1,84 +1,57 @@
-import { MongoClient, ObjectId, GridFSBucket, Db } from 'mongodb';
-import { Readable } from 'stream';
+import mongoose from 'mongoose';
+import connectDB from '@/lib/db/mongodb';
 
-const MONGODB_URI = process.env.MONGODB_URI;
+const { GridFSBucket, ObjectId } = mongoose.mongo;
 
-if (!MONGODB_URI) {
-  throw new Error('Please define MONGODB_URI in .env.local');
-}
-
-let cachedClient: MongoClient | null = null;
-let cachedDb: Db | null = null;
-let cachedBucket: GridFSBucket | null = null;
-
-async function getGridFSBucket(): Promise<{ db: Db; bucket: GridFSBucket }> {
-  if (cachedClient && cachedDb && cachedBucket) {
-    return { db: cachedDb, bucket: cachedBucket };
-  }
-
-  const client = new MongoClient(MONGODB_URI!);
-  await client.connect();
-
-  const db = client.db();
-  const bucket = new GridFSBucket(db, { bucketName: 'uploads' });
-
-  cachedClient = client;
-  cachedDb = db;
-  cachedBucket = bucket;
-
-  return { db, bucket };
+/**
+ * Reuse the cached mongoose connection instead of opening a second MongoClient
+ * (the old version leaked a new client on every dev hot-reload).
+ */
+async function getBucket() {
+  await connectDB();
+  const db = mongoose.connection.db;
+  if (!db) throw new Error('MongoDB connection is not ready');
+  return { db, bucket: new GridFSBucket(db, { bucketName: 'uploads' }) };
 }
 
 export async function uploadFile(buffer: Buffer, filename: string, mimetype: string, originalname: string): Promise<string> {
-  const { bucket } = await getGridFSBucket();
+  const { bucket } = await getBucket();
 
   return new Promise((resolve, reject) => {
     const uploadStream = bucket.openUploadStream(filename, {
-      metadata: {
-        originalname,
-        mimetype,
-        uploadDate: new Date(),
-      },
+      metadata: { originalname, mimetype, uploadDate: new Date() },
     });
-
-    const readableStream = Readable.from(buffer);
-
-    readableStream.pipe(uploadStream);
-
-    uploadStream.on('finish', () => {
-      resolve(uploadStream.id.toString());
-    });
-
-    uploadStream.on('error', (error) => {
-      reject(error);
-    });
+    uploadStream.once('finish', () => resolve(uploadStream.id.toString()));
+    uploadStream.once('error', reject);
+    uploadStream.end(buffer);
   });
 }
 
-export async function downloadFile(fileId: string): Promise<{
-  stream: NodeJS.ReadableStream;
+export interface StoredFile {
+  length: number;
   filename: string;
+  originalname: string;
   contentType: string;
-} | null> {
+  openStream: (range?: { start: number; end: number }) => NodeJS.ReadableStream;
+}
+
+export async function getFile(fileId: string): Promise<StoredFile | null> {
   if (!ObjectId.isValid(fileId)) {
     throw new Error('Invalid file id');
   }
 
-  const { db, bucket } = await getGridFSBucket();
+  const { db, bucket } = await getBucket();
   const _id = new ObjectId(fileId);
-
   const fileDoc = await db.collection('uploads.files').findOne({ _id });
-
-  if (!fileDoc) {
-    return null;
-  }
-
-  const downloadStream = bucket.openDownloadStream(_id);
+  if (!fileDoc) return null;
 
   return {
-    stream: downloadStream,
+    length: fileDoc.length,
     filename: fileDoc.filename || 'download',
+    originalname: fileDoc.metadata?.originalname || fileDoc.filename || 'download',
     contentType: fileDoc.metadata?.mimetype || 'application/octet-stream',
+    // GridFS `end` is exclusive, HTTP Range `end` is inclusive.
+    openStream: (range) => bucket.openDownloadStream(_id, range ? { start: range.start, end: range.end + 1 } : undefined),
   };
 }
 
@@ -87,15 +60,13 @@ export async function deleteFile(fileId: string): Promise<void> {
     console.error('Invalid file id for deletion:', fileId);
     return;
   }
-
-  try {
-    const { bucket } = await getGridFSBucket();
-    const _id = new ObjectId(fileId);
-    await bucket.delete(_id);
-  } catch (err) {
-    console.error('Error deleting file from GridFS:', err);
-    throw err;
-  }
+  const { bucket } = await getBucket();
+  await bucket.delete(new ObjectId(fileId));
 }
 
-export { getGridFSBucket };
+export async function deleteFiles(fileIds: string[]): Promise<void> {
+  const results = await Promise.allSettled(fileIds.map((id) => deleteFile(id)));
+  results.forEach((r, i) => {
+    if (r.status === 'rejected') console.error(`Error deleting file ${fileIds[i]}:`, r.reason);
+  });
+}

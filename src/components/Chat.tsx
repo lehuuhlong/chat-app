@@ -1,252 +1,385 @@
 'use client';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import io from 'socket.io-client';
+import io, { Socket } from 'socket.io-client';
 import { Message } from '@/types';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
 import { DeleteModal } from './DeleteModal';
 import { TypingIndicator } from './TypingIndicator';
 import { UsernameModal } from './UsernameModal';
+import { ToastStack, ToastItem } from './Toast';
 import { generateRandomName } from '@/lib/name-generator';
+import { getAvatarColor } from '@/lib/client/format';
+import { deleteMessage, editMessage, fetchMessages, getUserId, sendMessage, toggleReaction } from '@/lib/client/api';
+import { MAX_FILE_SIZE, MAX_FILES, MAX_TEXT_LENGTH, MAX_USERNAME_LENGTH } from '@/lib/constants';
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
-let socket: any;
+// If a "stopTyping" event is lost, the indicator still disappears after this delay.
+const TYPING_EXPIRY_MS = 5000;
+
+const errorMessage = (e: unknown) => (e instanceof Error ? e.message : 'Please try again.');
 
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [text, setText] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [username, setUsername] = useState('');
-  const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
+  const [userId, setUserId] = useState<string | null>(null);
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
-  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; messageId: string | null }>({
-    isOpen: false,
-    messageId: null,
-  });
+  const [isConnected, setIsConnected] = useState<boolean | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUsernameModalOpen, setIsUsernameModalOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const dragCounterRef = useRef(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
 
-  // Drag & drop files into the chat window
-  const hasFiles = (e: React.DragEvent) => Array.from(e.dataTransfer?.types || []).includes('Files');
+  // Refs let socket handlers read the latest values without re-subscribing (the old code
+  // reconnected the socket and reloaded all messages every time the username changed).
+  const socketRef = useRef<Socket | null>(null);
+  const usernameRef = useRef('');
+  const userIdRef = useRef<string | null>(null);
+  const messagesRef = useRef<Message[]>([]);
+  const filesRef = useRef<File[]>([]);
+  const hasMoreRef = useRef(true);
+  const isLoadingMoreRef = useRef(false);
+  const typingTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const unreadRef = useRef(0);
+  const baseTitleRef = useRef('');
+  const dragCounterRef = useRef(0);
+  const toastIdRef = useRef(0);
+
+  messagesRef.current = messages;
+
+  // ---------- Toasts ----------
+  const dismissToast = useCallback((id: number) => setToasts((prev) => prev.filter((t) => t.id !== id)), []);
+
+  const notify = useCallback(
+    (message: string, type: ToastItem['type'] = 'error') => {
+      const id = ++toastIdRef.current;
+      setToasts((prev) => [...prev.slice(-2), { id, message, type }]);
+      setTimeout(() => dismissToast(id), 4000);
+    },
+    [dismissToast],
+  );
+
+  // ---------- Attachments ----------
+  const updateFiles = useCallback((next: File[]) => {
+    filesRef.current = next;
+    setFiles(next);
+  }, []);
+
+  /** Validate on the client so users don't upload 50MB just to be rejected by the server. */
+  const addFiles = useCallback(
+    (incoming: File[]) => {
+      if (incoming.length === 0) return;
+      const tooLarge = incoming.filter((f) => f.size > MAX_FILE_SIZE);
+      const accepted = incoming.filter((f) => f.size > 0 && f.size <= MAX_FILE_SIZE);
+      if (tooLarge.length > 0) {
+        notify(`${tooLarge.map((f) => f.name).join(', ')} ${tooLarge.length === 1 ? 'is' : 'are'} larger than 10MB`);
+      }
+      const room = MAX_FILES - filesRef.current.length;
+      if (accepted.length > room) notify(`You can attach up to ${MAX_FILES} files per message`);
+      const toAdd = accepted.slice(0, Math.max(0, room));
+      if (toAdd.length > 0) updateFiles([...filesRef.current, ...toAdd]);
+    },
+    [notify, updateFiles],
+  );
+
+  const removeFile = useCallback(
+    (index: number) => updateFiles(filesRef.current.filter((_, i) => i !== index)),
+    [updateFiles],
+  );
+
+  // ---------- Drag & drop ----------
+  const hasDraggedFiles = (e: React.DragEvent) => Array.from(e.dataTransfer?.types || []).includes('Files');
 
   const handleDragEnter = (e: React.DragEvent) => {
-    if (!hasFiles(e)) return;
+    if (!hasDraggedFiles(e)) return;
     e.preventDefault();
     dragCounterRef.current += 1;
-    if (!isSubmitting) setIsDragging(true);
+    setIsDragging(true);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
-    if (!hasFiles(e)) return;
+    if (!hasDraggedFiles(e)) return;
     e.preventDefault();
-    e.dataTransfer.dropEffect = isSubmitting ? 'none' : 'copy';
+    e.dataTransfer.dropEffect = 'copy';
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
-    if (!hasFiles(e)) return;
+    if (!hasDraggedFiles(e)) return;
     e.preventDefault();
     dragCounterRef.current = Math.max(0, dragCounterRef.current - 1);
     if (dragCounterRef.current === 0) setIsDragging(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
-    if (!hasFiles(e)) return;
+    if (!hasDraggedFiles(e)) return;
     e.preventDefault();
     dragCounterRef.current = 0;
     setIsDragging(false);
-    if (isSubmitting) return;
-    const dropped = Array.from(e.dataTransfer.files || []);
-    if (dropped.length > 0) setFiles((prev) => [...prev, ...dropped]);
+    addFiles(Array.from(e.dataTransfer.files || []));
   };
 
-  // Pagination states
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const MESSAGES_PER_PAGE = 10;
+  // ---------- Loading messages ----------
+  const setHasMoreBoth = (value: boolean) => {
+    hasMoreRef.current = value;
+    setHasMore(value);
+  };
 
-  // Load messages with pagination
-  const loadMessages = useCallback(async (pageNum: number = 1, append: boolean = false) => {
+  /** Loads the newest page. Also used after a reconnect to catch up on missed messages. */
+  const loadLatest = useCallback(async () => {
+    const isFirstLoad = messagesRef.current.length === 0;
     try {
-      setIsLoadingMore(true);
-      const response = await fetch(`/api/messages?page=${pageNum}&limit=${MESSAGES_PER_PAGE}`);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data && data.messages) {
-        if (append) {
-          setMessages((prev) => [...data.messages, ...prev]);
-        } else {
-          setMessages(data.messages);
-        }
-
-        if (data.pagination) {
-          setHasMore(data.pagination.hasMore);
-        }
-        setPage(pageNum);
-      }
-    } catch (error) {
-      console.error('Failed to load messages:', error);
-      setHasMore(false);
+      const data = await fetchMessages();
+      setMessages((prev) => {
+        if (prev.length === 0 || data.messages.length === 0) return data.messages;
+        // Keep the older history we already have, replace the window covered by this page
+        // (this also drops messages that were deleted while we were offline).
+        const oldestFetched = data.messages[0]._id;
+        return [...prev.filter((m) => m._id < oldestFetched), ...data.messages];
+      });
+      if (isFirstLoad) setHasMoreBoth(data.hasMore);
+    } catch (e) {
+      notify(`Could not load messages: ${errorMessage(e)}`);
     } finally {
+      setIsInitialLoading(false);
+    }
+  }, [notify]);
+
+  const loadOlder = useCallback(async () => {
+    const oldest = messagesRef.current[0]?._id;
+    if (!oldest || isLoadingMoreRef.current || !hasMoreRef.current) return;
+    isLoadingMoreRef.current = true;
+    setIsLoadingMore(true);
+    setLoadError(false);
+    try {
+      const data = await fetchMessages(oldest);
+      setMessages((prev) => {
+        const known = new Set(prev.map((m) => m._id));
+        return [...data.messages.filter((m) => !known.has(m._id)), ...prev];
+      });
+      setHasMoreBoth(data.hasMore);
+    } catch (e) {
+      setLoadError(true);
+      notify(`Could not load older messages: ${errorMessage(e)}`);
+    } finally {
+      isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
+  }, [notify]);
+
+  // ---------- Typing ----------
+  const removeTypingUser = useCallback((name: string) => {
+    const timers = typingTimersRef.current;
+    clearTimeout(timers.get(name));
+    timers.delete(name);
+    setTypingUsers((prev) => (prev.includes(name) ? prev.filter((n) => n !== name) : prev));
   }, []);
 
-  // Load more messages when scrolling to top
-  const handleLoadMore = useCallback(() => {
-    if (!isLoadingMore && hasMore) {
-      loadMessages(page + 1, true);
-    }
-  }, [loadMessages, page, isLoadingMore, hasMore]);
+  const addTypingUser = useCallback(
+    (name: string) => {
+      const timers = typingTimersRef.current;
+      clearTimeout(timers.get(name));
+      timers.set(
+        name,
+        setTimeout(() => removeTypingUser(name), TYPING_EXPIRY_MS),
+      );
+      setTypingUsers((prev) => (prev.includes(name) ? prev : [...prev, name]));
+    },
+    [removeTypingUser],
+  );
 
+  const isOwn = (msg: Message) => (msg.userId ? msg.userId === userIdRef.current : msg.username === usernameRef.current);
+
+  // ---------- Socket & bootstrap (runs once) ----------
   useEffect(() => {
-    // Check for saved username, or generate a new one
-    const savedUsername = localStorage.getItem('username');
-    if (savedUsername) {
-      setUsername(savedUsername);
-    } else {
-      const newUsername = generateRandomName();
-      setUsername(newUsername);
-      localStorage.setItem('username', newUsername);
+    let savedName = localStorage.getItem('username')?.trim().slice(0, MAX_USERNAME_LENGTH);
+    if (!savedName) {
+      savedName = generateRandomName();
+      localStorage.setItem('username', savedName);
     }
+    usernameRef.current = savedName;
+    setUsername(savedName);
 
-    // Load initial messages with pagination
-    loadMessages(1, false);
+    getUserId()
+      .then((id) => {
+        userIdRef.current = id;
+        setUserId(id);
+      })
+      .catch(() => notify('Could not verify your identity. Editing your messages may not work.'));
 
-    fetch('/api/online-users')
-      .then((res) => res.json())
-      .then(setOnlineUsers);
+    loadLatest();
 
-    socket = io(SOCKET_URL);
+    const socket = io(SOCKET_URL);
+    socketRef.current = socket;
+    let connectedBefore = false;
+
+    socket.on('connect', () => {
+      setIsConnected(true);
+      // Re-announce on every (re)connect, otherwise we disappear from the online list after a network blip.
+      socket.emit('userOnline', usernameRef.current);
+      if (connectedBefore) loadLatest();
+      connectedBefore = true;
+    });
+    socket.on('disconnect', () => setIsConnected(false));
+
     socket.on('message', (msg: Message) => {
-      setMessages((prev) => {
-        // Notify if window is not focused and message is not from self
-        if (typeof window !== 'undefined' && document.visibilityState !== 'visible' && msg.username !== username) {
-          if (window.Notification && Notification.permission === 'granted') {
-            new Notification(`New message from ${msg.username}`, {
-              body: msg.text || 'You have a new message',
-              icon: '/favicon.ico',
-            });
-          }
+      setMessages((prev) => (prev.some((m) => m._id === msg._id) ? prev : [...prev, msg]));
+      removeTypingUser(msg.username);
+
+      if (!isOwn(msg) && document.visibilityState !== 'visible') {
+        unreadRef.current += 1;
+        document.title = `(${unreadRef.current}) ${baseTitleRef.current}`;
+        if ('Notification' in window && Notification.permission === 'granted') {
+          const n = new Notification(`New message from ${msg.username}`, {
+            body: msg.text || '📎 Sent an attachment',
+            icon: '/favicon.ico',
+            tag: 'chat-message',
+          });
+          n.onclick = () => {
+            window.focus();
+            n.close();
+          };
         }
-        return [...prev, msg];
-      });
+      }
     });
     socket.on('messageDeleted', (messageId: string) => {
       setMessages((prev) => prev.filter((msg) => msg._id !== messageId));
     });
-    socket.on('messageEdited', (data: { _id: string; text: string }) => {
-      setMessages((prev) => prev.map((msg) => (msg._id === data._id ? { ...msg, text: data.text } : msg)));
+    socket.on('messageEdited', (data: { _id: string; text: string; editedAt?: string }) => {
+      setMessages((prev) => prev.map((msg) => (msg._id === data._id ? { ...msg, text: data.text, editedAt: data.editedAt } : msg)));
     });
-    socket.on('messageReacted', (data: { _id: string; reactions: { [key: string]: string[] } }) => {
+    socket.on('messageReacted', (data: { _id: string; reactions: Message['reactions'] }) => {
       setMessages((prev) => prev.map((msg) => (msg._id === data._id ? { ...msg, reactions: data.reactions } : msg)));
     });
-    socket.on('typing', (username: string) => {
-      setTypingUsers((prev) => {
-        const newSet = new Set(prev);
-        newSet.add(username);
-        return newSet;
-      });
-    });
-    socket.on('stopTyping', (username: string) => {
-      setTypingUsers((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(username);
-        return newSet;
-      });
-    });
-    socket.on('onlineUsers', (users: string[]) => {
-      setOnlineUsers(users);
-    });
-    // Yêu cầu quyền thông báo khi load lần đầu
-    if (typeof window !== 'undefined' && window.Notification && Notification.permission !== 'granted') {
-      Notification.requestPermission();
-    }
-    return () => socket.disconnect();
-  }, [username]);
+    socket.on('userTyping', addTypingUser);
+    socket.on('userStoppedTyping', removeTypingUser);
+    socket.on('onlineUsers', setOnlineUsers);
 
+    const timers = typingTimersRef.current;
+    return () => {
+      socket.disconnect();
+      socketRef.current = null;
+      timers.forEach(clearTimeout);
+      timers.clear();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Unread counter in the tab title
   useEffect(() => {
-    if (username && socket) {
-      socket.emit('userOnline', username);
-    }
-  }, [username]);
+    baseTitleRef.current = document.title;
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && unreadRef.current > 0) {
+        unreadRef.current = 0;
+        document.title = baseTitleRef.current;
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!username || isSubmitting) return;
-    if (!text.trim() && files.length === 0) return;
-
-    setIsSubmitting(true);
-    try {
-      const formData = new FormData();
-      formData.append('username', username);
-      formData.append('text', text);
-
-      // Add each file to formData
-      files.forEach((file) => {
-        formData.append('files', file);
-      });
-
-      const response = await fetch('/api/messages', {
-        method: 'POST',
-        body: formData,
-        // Don't set Content-Type header, let browser set it with boundary for FormData
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+  // ---------- Actions ----------
+  const handleSend = useCallback(
+    async (text: string): Promise<boolean> => {
+      const name = usernameRef.current;
+      const toSend = filesRef.current;
+      if (!name || (!text.trim() && toSend.length === 0)) return false;
+      if (text.length > MAX_TEXT_LENGTH) {
+        notify(`Message is too long (max ${MAX_TEXT_LENGTH} characters)`);
+        return false;
       }
 
-      setText('');
-      setFiles([]);
-    } catch (error) {
-      console.error('Failed to send message:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Please try again.';
-      alert(`Failed to send message: ${errorMessage}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+      setIsSubmitting(true);
+      try {
+        const { message } = await sendMessage(name, text, toSend);
+        // Add from the response too, so the sender sees the message even if the socket is down.
+        setMessages((prev) => (prev.some((m) => m._id === message._id) ? prev : [...prev, message]));
+        // Only remove files that were actually sent (the user may have attached more meanwhile).
+        updateFiles(filesRef.current.filter((f) => !toSend.includes(f)));
+        // Ask for notification permission after a user gesture — browsers block/penalize it on page load.
+        if ('Notification' in window && Notification.permission === 'default') {
+          Notification.requestPermission().catch(() => {});
+        }
+        return true;
+      } catch (e) {
+        notify(`Failed to send message: ${errorMessage(e)}`);
+        return false;
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [notify, updateFiles],
+  );
 
-  const handleUsernameChange = (newUsername: string) => {
+  const handleEdit = useCallback(
+    async (id: string, text: string): Promise<boolean> => {
+      try {
+        const updated = await editMessage(id, text, usernameRef.current);
+        setMessages((prev) => prev.map((m) => (m._id === id ? { ...m, text: updated.text, editedAt: updated.editedAt } : m)));
+        return true;
+      } catch (e) {
+        notify(`Failed to edit message: ${errorMessage(e)}`);
+        return false;
+      }
+    },
+    [notify],
+  );
+
+  const handleReact = useCallback(
+    async (id: string, emoji: string) => {
+      try {
+        const updated = await toggleReaction(id, emoji, usernameRef.current);
+        setMessages((prev) => prev.map((m) => (m._id === id ? { ...m, reactions: updated.reactions } : m)));
+      } catch (e) {
+        notify(`Failed to react: ${errorMessage(e)}`);
+      }
+    },
+    [notify],
+  );
+
+  const handleConfirmDelete = useCallback(async () => {
+    const id = deleteTargetId;
+    setDeleteTargetId(null);
+    if (!id) return;
+    try {
+      await deleteMessage(id, usernameRef.current);
+      setMessages((prev) => prev.filter((m) => m._id !== id));
+    } catch (e) {
+      notify(`Failed to delete message: ${errorMessage(e)}`);
+    }
+  }, [deleteTargetId, notify]);
+
+  const requestDelete = useCallback((id: string) => setDeleteTargetId(id), []);
+
+  const handleUsernameChange = useCallback((newUsername: string) => {
+    usernameRef.current = newUsername;
     setUsername(newUsername);
     localStorage.setItem('username', newUsername);
-  };
+    socketRef.current?.emit('userOnline', newUsername);
+  }, []);
 
-  // Lọc tin nhắn theo search
-  const filteredMessages = search.trim()
-    ? messages.filter((msg) => msg.text?.toLowerCase().includes(search.toLowerCase()) || msg.username?.toLowerCase().includes(search.toLowerCase()))
-    : messages;
+  const emitTyping = useCallback(() => socketRef.current?.emit('typing'), []);
+  const emitStopTyping = useCallback(() => socketRef.current?.emit('stopTyping'), []);
 
-  // Generate avatar color from username
-  const getAvatarColor = (name: string) => {
-    const colors = [
-      'from-violet-500 to-purple-600',
-      'from-blue-500 to-cyan-500',
-      'from-emerald-500 to-teal-500',
-      'from-orange-500 to-amber-500',
-      'from-pink-500 to-rose-500',
-      'from-indigo-500 to-blue-600',
-    ];
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return colors[Math.abs(hash) % colors.length];
-  };
+  const filteredMessages = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+    if (!keyword) return messages;
+    return messages.filter((msg) => msg.text?.toLowerCase().includes(keyword) || msg.username?.toLowerCase().includes(keyword));
+  }, [messages, search]);
+
+  const otherTypingUsers = useMemo(() => typingUsers.filter((u) => u !== username), [typingUsers, username]);
 
   return (
     <>
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
       <div className="flex items-center justify-center min-h-screen p-4 relative z-10 mobile-chat-wrapper">
         <motion.div
           initial={{ opacity: 0, y: 30, scale: 0.96 }}
@@ -278,7 +411,7 @@ export default function Chat() {
                     Thả ảnh hoặc file vào đây
                   </p>
                   <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    File sẽ được đính kèm vào tin nhắn
+                    Tối đa {MAX_FILES} file, mỗi file ≤ 10MB
                   </p>
                 </div>
               </motion.div>
@@ -296,18 +429,28 @@ export default function Chat() {
               <div>
                 <h1 className="font-bold text-lg tracking-tight" style={{ color: 'var(--text-primary)' }}>Messenger</h1>
                 <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  <span className="online-dot"></span>
-                  <span>{onlineUsers.length} online</span>
+                  {isConnected === false ? (
+                    <>
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                      <span>Reconnecting…</span>
+                    </>
+                  ) : isConnected === null ? (
+                    <span>Connecting…</span>
+                  ) : (
+                    <>
+                      <span className="online-dot"></span>
+                      <span>{onlineUsers.length} online</span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
             <button
               onClick={() => setIsUsernameModalOpen(true)}
               className="flex items-center gap-2 px-3 py-2 rounded-xl glass-subtle hover:scale-[1.02] transition-smooth cursor-pointer mobile-username-btn"
+              title="Change your name"
             >
-              <div className={`avatar bg-gradient-to-br ${getAvatarColor(username)} w-7 h-7 text-[11px]`}>
-                {username.charAt(0)}
-              </div>
+              <div className={`avatar bg-gradient-to-br ${getAvatarColor(username)} w-7 h-7 text-[11px]`}>{username.charAt(0).toUpperCase()}</div>
               <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                 {username || 'Set Name'}
               </span>
@@ -320,7 +463,9 @@ export default function Chat() {
           {/* Online Users Bar */}
           <div className="px-6 py-2.5 border-b border-white/10 dark:border-white/5 flex items-center gap-2 overflow-x-auto scrollbar-hide mobile-online-bar">
             {onlineUsers.length === 0 ? (
-              <span className="text-xs italic" style={{ color: 'var(--text-secondary)' }}>No one online</span>
+              <span className="text-xs italic" style={{ color: 'var(--text-secondary)' }}>
+                No one online
+              </span>
             ) : (
               onlineUsers.map((user) => (
                 <motion.div
@@ -337,9 +482,7 @@ export default function Chat() {
                   <span className="online-dot"></span>
                   <span className="mobile-user-chip-name">{user}</span>
                   {user === username && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 font-semibold">
-                      you
-                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 font-semibold">you</span>
                   )}
                 </motion.div>
               ))
@@ -360,10 +503,11 @@ export default function Chat() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
               </svg>
               <input
-                type="text"
+                type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search messages..."
+                onKeyDown={(e) => e.key === 'Escape' && setSearch('')}
+                placeholder="Search loaded messages..."
                 className="w-full rounded-xl pl-10 pr-10 py-2.5 text-sm transition-smooth placeholder:text-gray-400 dark:placeholder:text-gray-500"
                 style={{
                   background: 'var(--input-bg)',
@@ -374,6 +518,7 @@ export default function Chat() {
               {search && (
                 <button
                   onClick={() => setSearch('')}
+                  aria-label="Clear search"
                   className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-gray-300/50 dark:bg-gray-600/50 flex items-center justify-center hover:bg-gray-400/50 transition-smooth"
                 >
                   <svg className="w-3 h-3" style={{ color: 'var(--text-secondary)' }} fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
@@ -387,56 +532,39 @@ export default function Chat() {
           {/* Messages */}
           <MessageList
             messages={filteredMessages}
+            currentUserId={userId}
             username={username}
-            onDelete={(messageId) => setDeleteModal({ isOpen: true, messageId })}
-            search={search}
-            onLoadMore={handleLoadMore}
+            search={search.trim()}
+            onDelete={requestDelete}
+            onEdit={handleEdit}
+            onReact={handleReact}
+            onLoadMore={loadOlder}
             hasMore={hasMore}
             isLoadingMore={isLoadingMore}
+            loadError={loadError}
+            isInitialLoading={isInitialLoading}
           />
 
           {/* Typing Indicator */}
           <div className="relative">
-            <TypingIndicator typingUsers={typingUsers} currentUser={username} />
+            <TypingIndicator users={otherTypingUsers} />
           </div>
 
           {/* Chat Input */}
           <ChatInput
             username={username}
-            text={text}
             files={files}
             isSubmitting={isSubmitting}
-            onTextChange={setText}
-            onFilesChange={setFiles}
-            onSubmit={handleSendMessage}
-            onTyping={() => {
-              if (username) {
-                socket.emit('typing', username);
-              }
-            }}
-            onStopTyping={() => {
-              if (username) {
-                socket.emit('stopTyping', username);
-              }
-            }}
+            onSend={handleSend}
+            onAddFiles={addFiles}
+            onRemoveFile={removeFile}
+            onTyping={emitTyping}
+            onStopTyping={emitStopTyping}
+            onError={notify}
           />
         </motion.div>
       </div>
-      <DeleteModal
-        isOpen={deleteModal.isOpen}
-        onClose={() => setDeleteModal({ isOpen: false, messageId: null })}
-        onConfirm={async () => {
-          if (!deleteModal.messageId) return;
-          try {
-            const response = await fetch(`/api/messages/${deleteModal.messageId}`, {
-              method: 'DELETE',
-            });
-            if (!response.ok) throw new Error('Failed to delete message');
-          } catch (error) {
-            alert('Failed to delete message. Please try again!');
-          }
-        }}
-      />
+      <DeleteModal isOpen={deleteTargetId !== null} onClose={() => setDeleteTargetId(null)} onConfirm={handleConfirmDelete} />
       <UsernameModal
         isOpen={isUsernameModalOpen}
         onClose={() => setIsUsernameModalOpen(false)}

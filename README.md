@@ -203,27 +203,32 @@ Visit `http://localhost:3000` to see the application.
 
 #### Messages
 
-- `GET /api/messages?page=1&limit=10` - Get paginated messages
-- `POST /api/messages` - Send new message with files (multipart/form-data)
-- `PATCH /api/messages/:id` - Edit message text
-- `DELETE /api/messages/:id` - Delete message and associated files
-- `POST /api/messages/:id/react` - Toggle reaction on message
+- `GET /api/messages?before=<messageId>&limit=20` - Cursor pagination (omit `before` for the newest page). Returns `{ messages, hasMore }`
+- `POST /api/messages` - Send new message with files (multipart/form-data) — requires `x-user-secret`
+- `PATCH /api/messages/:id` - Edit message text — author only
+- `DELETE /api/messages/:id` - Delete message and associated files — author only
+- `POST /api/messages/:id/react` - Toggle reaction on message (atomic)
+
+**Identity:** each browser stores a random secret in `localStorage` and sends it as the `x-user-secret` header.
+The server derives a public `userId` from it, which is saved on each message and checked on edit/delete.
+Messages created before this change have no `userId` and fall back to matching the `x-username` header.
 
 #### Files
 
-- `GET /api/files/:id` - Download file from GridFS
+- `GET /api/files/:id` - Stream file from GridFS (supports `Range`, cached as immutable). Add `?download` to force a download.
 
 #### Users
 
+- `GET /api/me` - Returns the `userId` derived from `x-user-secret`
 - `GET /api/online-users` - Get list of currently online users
 
 ### Socket.IO Events
 
 #### Client → Server
 
-- `userOnline` - User comes online
-- `typing` - User starts typing
-- `stopTyping` - User stops typing
+- `userOnline(username)` - Announce / rename (presence is tracked per socket, so multiple tabs work)
+- `typing` - User starts typing (throttled by the client to once every 2s)
+- `stopTyping` - User stops typing (also sent automatically on disconnect)
 
 #### Server → Client
 

@@ -1,77 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import connectDB from '@/lib/db/mongodb';
-import Message from '@/lib/db/models/Message';
-import { deleteFile } from '@/lib/services/gridfs';
+import Message, { serializeMessage } from '@/lib/db/models/Message';
+import { deleteFiles } from '@/lib/services/gridfs';
 import { emitSocketEvent } from '@/lib/services/socket-client';
+import { canModifyMessage } from '@/lib/server/identity';
+import { MAX_TEXT_LENGTH } from '@/lib/constants';
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+type Params = { params: Promise<{ id: string }> };
+
+export async function PATCH(request: NextRequest, { params }: Params) {
   try {
-    await connectDB();
-
     const { id } = await params;
-    const body = await request.json();
-    const { text } = body;
-
-    if (!text) {
-      return NextResponse.json({ error: 'Text is required' }, { status: 400 });
-    }
-
-    const message = await Message.findById(id);
-
-    if (!message) {
+    if (!mongoose.isValidObjectId(id)) {
       return NextResponse.json({ error: 'Message not found' }, { status: 404 });
     }
 
-    message.text = text;
-    await message.save();
+    const body = await request.json().catch(() => ({}));
+    const text = typeof body.text === 'string' ? body.text : '';
 
-    // Convert to plain object and handle reactions Map
-    const messageObj: any = message.toObject();
-    if (messageObj.reactions && messageObj.reactions instanceof Map) {
-      messageObj.reactions = Object.fromEntries(messageObj.reactions);
+    if (!text.trim()) {
+      return NextResponse.json({ error: 'Text is required' }, { status: 400 });
+    }
+    if (text.length > MAX_TEXT_LENGTH) {
+      return NextResponse.json({ error: `Message is too long (max ${MAX_TEXT_LENGTH} characters)` }, { status: 400 });
     }
 
-    // Emit Socket.IO event
-    await emitSocketEvent('messageEdited', { _id: message._id, text });
+    await connectDB();
+    const message = await Message.findById(id);
+    if (!message) {
+      return NextResponse.json({ error: 'Message not found' }, { status: 404 });
+    }
+    if (!canModifyMessage(message, request)) {
+      return NextResponse.json({ error: 'You can only edit your own messages' }, { status: 403 });
+    }
 
-    return NextResponse.json(messageObj);
+    message.text = text;
+    message.editedAt = new Date();
+    await message.save();
+
+    await emitSocketEvent('messageEdited', { _id: message._id, text, editedAt: message.editedAt });
+
+    return NextResponse.json(serializeMessage(message));
   } catch (error) {
     console.error('Error updating message:', error);
     return NextResponse.json({ error: 'Error updating message' }, { status: 500 });
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: NextRequest, { params }: Params) {
   try {
-    await connectDB();
-
     const { id } = await params;
-    const message = await Message.findById(id);
-
-    if (!message) {
+    if (!mongoose.isValidObjectId(id)) {
       return NextResponse.json({ error: 'Message not found' }, { status: 404 });
     }
 
-    // Delete associated files from GridFS
-    if (message.files && message.files.length > 0) {
-      for (const file of message.files) {
-        try {
-          await deleteFile(file.id);
-        } catch (error) {
-          console.error(`Error deleting file ${file.id}:`, error);
-        }
-      }
-    } else if (message.file && message.file.id) {
-      try {
-        await deleteFile(message.file.id);
-      } catch (error) {
-        console.error(`Error deleting file ${message.file.id}:`, error);
-      }
+    await connectDB();
+    const message = await Message.findById(id);
+    if (!message) {
+      return NextResponse.json({ error: 'Message not found' }, { status: 404 });
+    }
+    if (!canModifyMessage(message, request)) {
+      return NextResponse.json({ error: 'You can only delete your own messages' }, { status: 403 });
     }
 
-    await Message.findByIdAndDelete(id);
+    const fileIds = new Set<string>();
+    message.files?.forEach((f) => f.id && fileIds.add(f.id));
+    if (message.file?.id) fileIds.add(message.file.id);
 
-    // Emit Socket.IO event
+    await message.deleteOne();
+    await deleteFiles([...fileIds]);
+
     await emitSocketEvent('messageDeleted', id);
 
     return NextResponse.json({ message: 'Message deleted' });

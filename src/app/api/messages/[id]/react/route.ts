@@ -1,58 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import connectDB from '@/lib/db/mongodb';
-import Message from '@/lib/db/models/Message';
+import Message, { serializeMessage } from '@/lib/db/models/Message';
 import { emitSocketEvent } from '@/lib/services/socket-client';
+import { REACTION_EMOJIS, MAX_USERNAME_LENGTH } from '@/lib/constants';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await connectDB();
-
     const { id } = await params;
-    const body = await request.json();
-    const { reaction, username } = body;
+    const body = await request.json().catch(() => ({}));
+    const reaction = body.reaction;
+    const username = typeof body.username === 'string' ? body.username.trim() : '';
 
-    if (!reaction || !username) {
-      return NextResponse.json({ error: 'Reaction and username are required' }, { status: 400 });
+    // Whitelisting the emoji also prevents arbitrary keys like "$set" or "a.b" in the Map path.
+    if (!REACTION_EMOJIS.includes(reaction) || !username || username.length > MAX_USERNAME_LENGTH) {
+      return NextResponse.json({ error: 'Invalid reaction or username' }, { status: 400 });
+    }
+    if (!mongoose.isValidObjectId(id)) {
+      return NextResponse.json({ error: 'Message not found' }, { status: 404 });
     }
 
-    const message = await Message.findById(id);
+    await connectDB();
+    const path = `reactions.${reaction}`;
 
+    // Atomic toggle: try to remove first; if the user hadn't reacted, add instead.
+    // The old read-modify-write lost reactions when two people reacted at the same time.
+    let message = await Message.findOneAndUpdate({ _id: id, [path]: username }, { $pull: { [path]: username } }, { new: true });
+    if (!message) {
+      message = await Message.findByIdAndUpdate(id, { $addToSet: { [path]: username } }, { new: true });
+    }
     if (!message) {
       return NextResponse.json({ error: 'Message not found' }, { status: 404 });
     }
 
-    // Get current reactions or initialize empty Map
-    const reactions = message.reactions || new Map<string, string[]>();
-    const users = reactions.get(reaction) || [];
-
-    // Toggle reaction - remove if exists, add if not
-    if (users.includes(username)) {
-      const updatedUsers = users.filter((user) => user !== username);
-      if (updatedUsers.length === 0) {
-        reactions.delete(reaction);
-      } else {
-        reactions.set(reaction, updatedUsers);
-      }
-    } else {
-      reactions.set(reaction, [...users, username]);
-    }
-
-    message.reactions = reactions;
-    await message.save();
-
-    // Convert to plain object and handle reactions Map
-    const messageObj: any = message.toObject();
-    if (messageObj.reactions && messageObj.reactions instanceof Map) {
-      messageObj.reactions = Object.fromEntries(messageObj.reactions);
-    }
-
-    // Emit Socket.IO event
-    const reactionsObj = message.reactions instanceof Map ? Object.fromEntries(message.reactions) : message.reactions;
-
-    await emitSocketEvent('messageReacted', {
-      _id: message._id,
-      reactions: reactionsObj,
-    });
+    const messageObj = serializeMessage(message);
+    await emitSocketEvent('messageReacted', { _id: message._id, reactions: messageObj.reactions });
 
     return NextResponse.json(messageObj);
   } catch (error) {

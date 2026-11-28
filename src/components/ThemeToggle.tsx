@@ -8,24 +8,19 @@ export default function ThemeToggle() {
 
   useEffect(() => {
     setMounted(true);
-    const dark = localStorage.getItem('theme') === 'dark';
-    setIsDark(dark);
-    if (dark) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
+    // The class is already applied by the inline script in layout.tsx (no light-theme flash).
+    setIsDark(document.documentElement.classList.contains('dark'));
   }, []);
 
   const toggleDark = () => {
-    setIsDark((v) => {
-      const next = !v;
-      if (next) {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('theme', 'dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem('theme', 'light');
-      }
-      return next;
-    });
+    const next = !isDark;
+    setIsDark(next);
+    document.documentElement.classList.toggle('dark', next);
+    try {
+      localStorage.setItem('theme', next ? 'dark' : 'light');
+    } catch {
+      // storage may be unavailable (private mode)
+    }
   };
 
   if (!mounted) return null;
@@ -37,6 +32,7 @@ export default function ThemeToggle() {
       whileHover={{ scale: 1.1 }}
       className="fixed top-5 right-5 z-50 w-11 h-11 rounded-xl glass flex items-center justify-center cursor-pointer transition-smooth mobile-theme-toggle"
       title={isDark ? 'Switch to Light mode' : 'Switch to Dark mode'}
+      aria-label={isDark ? 'Switch to Light mode' : 'Switch to Dark mode'}
     >
       <motion.div
         key={isDark ? 'dark' : 'light'}
@@ -46,14 +42,7 @@ export default function ThemeToggle() {
         transition={{ duration: 0.3 }}
       >
         {isDark ? (
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1.5}
-            stroke="currentColor"
-            className="w-5 h-5 text-amber-400"
-          >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-amber-400">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -61,14 +50,7 @@ export default function ThemeToggle() {
             />
           </svg>
         ) : (
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1.5}
-            stroke="currentColor"
-            className="w-5 h-5 text-indigo-600"
-          >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-indigo-600">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
